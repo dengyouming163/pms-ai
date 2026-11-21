@@ -1,0 +1,5 @@
+-- 门店信息扩展字段
+ALTER TABLE pms_bui_stores ADD COLUMN IF NOT EXISTS short_name VARCHAR(50);
+ALTER TABLE pms_bui_stores ADD COLUMN IF NOT EXISTS email VARCHAR(100);
+ALTER TABLE pms_bui_stores ADD COLUMN IF NOT EXISTS logo TEXT;
+ALTER TABLE pms_bui_stores ADD COLUMN IF NOT EXISTS description TEXT;

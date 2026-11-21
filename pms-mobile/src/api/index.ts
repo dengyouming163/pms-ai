@@ -1,0 +1,10 @@
+export * from './modules/auth'
+export * from './modules/dashboard'
+export * from './modules/rooms'
+export * from './modules/orders'
+export * from './modules/ai'
+export * from './modules/staff'
+export * from './modules/customers'
+export * from './modules/pricing'
+
+export { get, post, put, del, request, uploadFile } from './request'

@@ -1,0 +1,112 @@
+/* ========================================
+   设计令牌 — 智宿管家 Premium（深邃蓝灰主色调）
+   覆盖 TDesign 默认亮蓝，对齐高端酒店管理调性
+   ======================================== */
+
+:root {
+  /* === 品牌色 — 深邃蓝灰 === */
+  --pms-brand: #3C5068;
+  --pms-brand-light: #5B7490;
+  --pms-brand-deep: #2C3E5D;
+  --pms-brand-bg: rgba(60, 80, 104, 0.06);
+
+  /* === 辅助强调 — 温暖茶色 === */
+  --pms-accent: #B8956A;
+  --pms-accent-light: #D4BFA0;
+  --pms-accent-bg: rgba(184, 149, 106, 0.08);
+
+  /* === 高亮点缀 — 香槟金 === */
+  --pms-gold: #C8A96E;
+  --pms-gold-light: #E0D0B0;
+  --pms-gold-bg: rgba(200, 169, 110, 0.12);
+
+  /* === 背景色 === */
+  --pms-bg-page: #F3F4F6;
+  --pms-bg-card: #FFFFFF;
+  --pms-bg-input: #F8F9FB;
+  --pms-bg-hover: rgba(60, 80, 104, 0.04);
+
+  /* === 文字色 === */
+  --pms-text-primary: #1D2A3A;
+  --pms-text-secondary: #6B7C8E;
+  --pms-text-placeholder: #9BA8B5;
+  --pms-text-inverse: #F9FAFB;
+
+  /* === 边框色 === */
+  --pms-border: #E5E7EB;
+  --pms-border-light: #F0F1F4;
+
+  /* === 功能色 — 鼠尾草绿（成功） === */
+  --pms-success: #6B9B7A;
+  --pms-success-bg: rgba(107, 155, 122, 0.08);
+  --pms-success-text: #4A7A5A;
+
+  /* === 功能色 — 温暖茶色（警告） === */
+  --pms-warning: #C4955A;
+  --pms-warning-bg: rgba(196, 149, 90, 0.08);
+  --pms-warning-text: #A0703A;
+
+  /* === 功能色 — 柔和红（危险） === */
+  --pms-danger: #D35A5A;
+  --pms-danger-bg: rgba(211, 90, 90, 0.08);
+  --pms-danger-text: #B03A3A;
+
+  /* === 功能色 — 信息蓝 === */
+  --pms-info: #5B7FA5;
+  --pms-info-bg: rgba(91, 127, 165, 0.08);
+  --pms-info-text: #3B6085;
+
+  /* === 房态色（业务语义） === */
+  --pms-room-available: #6B9B7A;
+  --pms-room-available-bg: rgba(107, 155, 122, 0.08);
+  --pms-room-booked: #5B7FA5;
+  --pms-room-booked-bg: rgba(91, 127, 165, 0.08);
+  --pms-room-occupied: #C4955A;
+  --pms-room-occupied-bg: rgba(196, 149, 90, 0.08);
+  --pms-room-dirty: #D35A5A;
+  --pms-room-dirty-bg: rgba(211, 90, 90, 0.08);
+  --pms-room-repair: #8B7B9B;
+  --pms-room-repair-bg: rgba(139, 123, 155, 0.08);
+  --pms-room-locked: #9BA8B5;
+  --pms-room-locked-bg: rgba(155, 168, 181, 0.08);
+
+  /* === 圆角 — 大气柔和 === */
+  --pms-radius-xs: 6rpx;
+  --pms-radius-sm: 12rpx;
+  --pms-radius-md: 20rpx;
+  --pms-radius-lg: 28rpx;
+  --pms-radius-xl: 36rpx;
+  --pms-radius-2xl: 44rpx;
+  --pms-radius-full: 9999rpx;
+
+  /* === 阴影 — 轻柔层级 === */
+  --pms-shadow-xs: 0 1rpx 4rpx rgba(28, 42, 58, 0.04);
+  --pms-shadow-sm: 0 2rpx 8rpx rgba(28, 42, 58, 0.04);
+  --pms-shadow-md: 0 4rpx 16rpx rgba(28, 42, 58, 0.06);
+  --pms-shadow-lg: 0 8rpx 24rpx rgba(28, 42, 58, 0.08);
+
+  /* === 间距 === */
+  --pms-spacing-xs: 8rpx;
+  --pms-spacing-sm: 16rpx;
+  --pms-spacing-md: 24rpx;
+  --pms-spacing-lg: 32rpx;
+  --pms-spacing-xl: 48rpx;
+
+  /* === 字体 === */
+  --pms-font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --pms-font-size-xs: 22rpx;
+  --pms-font-size-sm: 24rpx;
+  --pms-font-size-base: 28rpx;
+  --pms-font-size-md: 30rpx;
+  --pms-font-size-lg: 32rpx;
+  --pms-font-size-xl: 36rpx;
+  --pms-font-size-2xl: 40rpx;
+  --pms-font-size-3xl: 48rpx;
+
+  /* === 过渡 === */
+  --pms-transition-fast: 0.15s ease;
+  --pms-transition-normal: 0.2s ease;
+  --pms-transition-slow: 0.3s ease;
+}

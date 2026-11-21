@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pms-nimi 微信UI风格优化对比</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: #f5f5f5; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+    h1 { text-align: center; margin-bottom: 40px; font-size: 28px; color: #333; }
+    .section { margin-bottom: 60px; }
+    .section-title { font-size: 20px; font-weight: 600; color: #333; margin-bottom: 20px; padding-left: 10px; border-left: 4px solid #3C5068; }
+    .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    .card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .card-title { font-size: 16px; font-weight: 600; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid; }
+    .card-before .card-title { border-color: #e05252; color: #e05252; }
+    .card-after .card-title { border-color: #52c41a; color: #52c41a; }
+    
+    :root {
+      --wx-primary: #07c160;
+      --wx-gray-1: #f7f7f7;
+      --wx-danger: #fa5151;
+    }
+    
+    .current-room-card { background: #fff; border-radius: 16rpx; overflow: hidden; margin-bottom: 20rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,.04); }
+    .current-room-top { display: flex; }
+    .current-room-img { width: 200rpx; height: 160rpx; flex-shrink: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; font-size: 60rpx; }
+    .current-room-meta { flex: 1; padding: 16rpx 20rpx; overflow: hidden; }
+    .current-room-name { font-size: 30rpx; font-weight: 600; color: #222; }
+    .current-room-specs { display: block; font-size: 24rpx; color: #888; margin-top: 6rpx; }
+    .current-room-bottom { display: flex; align-items: center; padding: 12rpx 20rpx; border-top: 1rpx solid #f5f5f5; }
+    .current-room-price { font-size: 32rpx; font-weight: 700; color: #e05252; }
+    .current-book-btn { background: #3C5068; border-radius: 8rpx; padding: 14rpx 28rpx; margin-left: auto; }
+    .current-book-btn span { color: #fff; font-size: 26rpx; }
+    
+    .wx-room-card { background: #fff; border-radius: 24rpx; overflow: hidden; margin-bottom: 24rpx; box-shadow: 0 8rpx 24rpx rgba(0,0,0,.06); }
+    .wx-room-top { display: flex; padding: 16rpx; gap: 16rpx; }
+    .wx-room-img { width: 240rpx; height: 200rpx; flex-shrink: 0; background: #f7f7f7; border-radius: 16rpx; display: flex; align-items: center; justify-content: center; font-size: 72rpx; }
+    .wx-room-meta { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .wx-room-name { font-size: 34rpx; font-weight: 600; color: #333; }
+    .wx-room-specs { display: flex; gap: 12rpx; font-size: 24rpx; color: #999; }
+    .wx-room-specs span { background: #f7f7f7; padding: 4rpx 12rpx; border-radius: 8rpx; }
+    .wx-room-bottom { display: flex; align-items: center; padding: 16rpx; border-top: 1rpx solid #f0f0f0; }
+    .wx-room-price-wrap { flex: 1; }
+    .wx-room-price { font-size: 36rpx; font-weight: 700; color: #fa5151; }
+    .wx-room-price span { font-size: 24rpx; font-weight: 400; }
+    .wx-room-saved { font-size: 22rpx; color: #07c160; margin-top: 4rpx; }
+    .wx-book-btn { background: linear-gradient(135deg, #07c160, #10b981); border-radius: 24rpx; padding: 16rpx 40rpx; box-shadow: 0 4rpx 16rpx rgba(7, 193, 96, 0.3); }
+    .wx-book-btn span { color: #fff; font-size: 28rpx; font-weight: 500; }
+    
+    .wx-btn-primary { background: linear-gradient(135deg, #07c160, #10b981); border-radius: 40rpx; padding: 20rpx 60rpx; color: #fff; font-size: 32rpx; font-weight: 500; border: none; box-shadow: 0 8rpx 24rpx rgba(7, 193, 96, 0.3); }
+    .wx-btn-outline { border: 2rpx solid #07c160; border-radius: 40rpx; padding: 20rpx 60rpx; color: #07c160; font-size: 32rpx; font-weight: 500; background: #fff; }
+    .wx-btn-danger { background: linear-gradient(135deg, #fa5151, #ef4444); border-radius: 40rpx; padding: 20rpx 60rpx; color: #fff; font-size: 32rpx; font-weight: 500; border: none; box-shadow: 0 8rpx 24rpx rgba(250, 81, 81, 0.3); }
+    
+    .current-order-card { background: #fff; border-radius: 12rpx; padding: 20rpx 24rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,.04); }
+    .current-order-header { display: flex; justify-content: space-between; align-items: center; }
+    .current-order-no { font-size: 24rpx; color: #999; }
+    .current-order-status { font-size: 24rpx; font-weight: 500; color: #52c41a; }
+    .current-order-body { margin-top: 12rpx; }
+    .current-order-room { font-size: 28rpx; font-weight: 600; color: #222; }
+    .current-order-date { display: block; font-size: 24rpx; color: #666; margin-top: 6rpx; }
+    .current-order-footer { display: flex; justify-content: space-between; align-items: baseline; margin-top: 16rpx; }
+    .current-order-price { font-size: 32rpx; font-weight: 700; color: #e05252; }
+    
+    .wx-order-card { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 20rpx rgba(0,0,0,.05); }
+    .wx-order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+    .wx-order-no { font-size: 24rpx; color: #999; }
+    .wx-order-status { font-size: 28rpx; font-weight: 600; color: #07c160; padding: 6rpx 16rpx; background: #e8f5e9; border-radius: 16rpx; }
+    .wx-order-body { padding: 20rpx; background: #f7f7f7; border-radius: 16rpx; margin-bottom: 20rpx; }
+    .wx-order-room { font-size: 30rpx; font-weight: 600; color: #333; }
+    .wx-order-date { display: block; font-size: 26rpx; color: #666; margin-top: 8rpx; }
+    .wx-order-guest { display: block; font-size: 24rpx; color: #999; margin-top: 4rpx; }
+    .wx-order-footer { display: flex; justify-content: space-between; align-items: center; }
+    .wx-order-price { font-size: 36rpx; font-weight: 700; color: #fa5151; }
+    .wx-order-price span { font-size: 26rpx; font-weight: 400; }
+    .wx-order-actions { display: flex; gap: 16rpx; }
+    .wx-order-action { padding: 12rpx 32rpx; border-radius: 24rpx; font-size: 26rpx; }
+    .wx-order-action-primary { background: #07c160; color: #fff; }
+    .wx-order-action-outline { border: 2rpx solid #ddd; color: #666; }
+    
+    .current-user-card { background: linear-gradient(135deg, #3C5068, #5a7898); padding: 40rpx 32rpx; display: flex; align-items: center; gap: 24rpx; }
+    .current-avatar { font-size: 80rpx; background: rgba(255,255,255,.2); width: 120rpx; height: 120rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .current-user-info { flex: 1; }
+    .current-user-name { font-size: 36rpx; font-weight: 600; color: #fff; }
+    .current-user-phone { display: block; font-size: 26rpx; color: rgba(255,255,255,.7); margin-top: 6rpx; }
+    
+    .wx-user-card { background: linear-gradient(135deg, #07c160, #10b981); padding: 48rpx 32rpx; display: flex; align-items: center; gap: 24rpx; border-radius: 0 0 32rpx 32rpx; }
+    .wx-avatar { font-size: 80rpx; background: rgba(255,255,255,.2); width: 130rpx; height: 130rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 4rpx solid rgba(255,255,255,.3); }
+    .wx-user-info { flex: 1; }
+    .wx-user-name { font-size: 40rpx; font-weight: 700; color: #fff; }
+    .wx-user-phone { display: block; font-size: 28rpx; color: rgba(255,255,255,.8); margin-top: 8rpx; }
+    .wx-user-level { display: inline-block; background: rgba(255,255,255,.2); color: #fff; font-size: 22rpx; padding: 4rpx 16rpx; border-radius: 16rpx; margin-top: 12rpx; }
+    
+    .current-menu-list { background: #fff; margin: 24rpx; border-radius: 16rpx; overflow: hidden; }
+    .current-menu-item { display: flex; align-items: center; padding: 28rpx 24rpx; border-bottom: 1rpx solid #f5f5f5; font-size: 28rpx; }
+    .current-menu-item:last-child { border-bottom: none; }
+    .current-menu-arrow { margin-left: auto; color: #ccc; font-size: 36rpx; }
+    
+    .wx-menu-list { background: #fff; margin: 24rpx; border-radius: 24rpx; overflow: hidden; padding: 8rpx 0; }
+    .wx-menu-item { display: flex; align-items: center; padding: 28rpx 32rpx; font-size: 30rpx; color: #333; }
+    .wx-menu-item:active { background: #f7f7f7; }
+    .wx-menu-arrow { margin-left: auto; color: #ccc; font-size: 36rpx; }
+    .wx-menu-icon { width: 48rpx; height: 48rpx; margin-right: 20rpx; display: flex; align-items: center; justify-content: center; font-size: 36rpx; }
+    
+    .current-nav-bar { background: #fff; height: 88rpx; display: flex; align-items: center; padding: 0 24rpx; }
+    .current-nav-title { flex: 1; text-align: center; font-size: 32rpx; font-weight: 500; color: #333; }
+    
+    .wx-nav-bar { background: #fff; height: 88rpx; display: flex; align-items: center; padding: 0 32rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,.05); }
+    .wx-nav-left { width: 80rpx; font-size: 40rpx; color: #333; }
+    .wx-nav-title { flex: 1; text-align: center; font-size: 34rpx; font-weight: 600; color: #333; }
+    
+    .current-tab-bar { display: flex; height: 100rpx; background: #fff; border-top: 1rpx solid #eee; }
+    .current-tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 8rpx; }
+    .current-tab-icon { font-size: 40rpx; }
+    .current-tab-label { font-size: 20rpx; color: #999; margin-top: 4rpx; }
+    .current-tab-item.active .current-tab-label { color: #3C5068; font-weight: 500; }
+    
+    .wx-tab-bar { display: flex; height: 110rpx; background: #fff; border-top: 1rpx solid #f0f0f0; padding-bottom: 20rpx; }
+    .wx-tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 8rpx; }
+    .wx-tab-icon { font-size: 48rpx; }
+    .wx-tab-label { font-size: 22rpx; color: #999; margin-top: 6rpx; }
+    .wx-tab-item.active { position: relative; }
+    .wx-tab-item.active .wx-tab-icon { transform: scale(1.1); }
+    .wx-tab-item.active .wx-tab-label { color: #07c160; font-weight: 600; }
+    .wx-tab-item.active::after { content: ''; position: absolute; bottom: 0; width: 40rpx; height: 4rpx; background: #07c160; border-radius: 2rpx; }
+    
+    .current-coupon-item { display: flex; background: #f9f9f9; border-radius: 16rpx; padding: 20rpx; margin-bottom: 16rpx; }
+    .current-coupon-left { width: 160rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 1rpx dashed #ddd; margin-right: 20rpx; }
+    .current-coupon-value { font-size: 36rpx; font-weight: 700; color: #e05252; }
+    .current-coupon-condition { font-size: 22rpx; color: #999; margin-top: 4rpx; }
+    .current-coupon-right { flex: 1; display: flex; flex-direction: column; }
+    .current-coupon-name { font-size: 28rpx; font-weight: 600; color: #333; }
+    .current-claim-btn { margin-top: 8rpx; align-self: flex-end; background: #e05252; color: #fff; border: none; border-radius: 20rpx; padding: 8rpx 28rpx; font-size: 24rpx; }
+    
+    .wx-coupon-item { display: flex; background: linear-gradient(135deg, #fff 60%, #fff0f0 60%); border-radius: 20rpx; padding: 24rpx; margin-bottom: 20rpx; border: 2rpx solid #ffcccc; position: relative; overflow: hidden; }
+    .wx-coupon-item::before { content: ''; position: absolute; left: 60%; top: -20rpx; width: 40rpx; height: 40rpx; background: #f5f5f5; border-radius: 50%; }
+    .wx-coupon-item::after { content: ''; position: absolute; left: 60%; bottom: -20rpx; width: 40rpx; height: 40rpx; background: #f5f5f5; border-radius: 50%; }
+    .wx-coupon-left { width: 40%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 2rpx dashed #ffcccc; margin-right: 20rpx; }
+    .wx-coupon-value { font-size: 48rpx; font-weight: 700; color: #fa5151; line-height: 1; }
+    .wx-coupon-value span { font-size: 28rpx; font-weight: 400; }
+    .wx-coupon-condition { font-size: 24rpx; color: #999; margin-top: 8rpx; }
+    .wx-coupon-right { flex: 1; display: flex; flex-direction: column; }
+    .wx-coupon-name { font-size: 30rpx; font-weight: 600; color: #333; }
+    .wx-coupon-desc { font-size: 24rpx; color: #999; margin-top: 8rpx; }
+    .wx-coupon-meta { font-size: 22rpx; color: #ccc; margin-top: 12rpx; }
+    .wx-claim-btn { margin-top: 12rpx; align-self: flex-end; background: linear-gradient(135deg, #fa5151, #ef4444); color: #fff; border: none; border-radius: 24rpx; padding: 12rpx 36rpx; font-size: 26rpx; font-weight: 500; box-shadow: 0 4rpx 12rpx rgba(250, 81, 81, 0.3); }
+    
+    .current-date-picker { background: #fff; border-radius: 16rpx; margin: 16rpx 24rpx; padding: 16rpx 0; }
+    .current-dp-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24rpx 12rpx; }
+    .current-dp-arrow { font-size: 28rpx; color: #3C5068; padding: 8rpx 16rpx; }
+    .current-dp-grid { display: flex; flex-wrap: wrap; padding: 0 12rpx; }
+    .current-dp-cell { width: calc(100% / 7); aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .current-dp-day { font-size: 28rpx; color: #333; }
+    .current-dp-range { background: #e6f0fa; }
+    .current-dp-checkin { background: #3C5068; border-radius: 50% 0 0 50%; }
+    .current-dp-checkin .current-dp-day, .current-dp-checkout .current-dp-day { color: #fff; font-weight: 600; }
+    .current-dp-checkout { background: #3C5068; border-radius: 0 50% 50% 0; }
+    
+    .wx-date-picker { background: #fff; border-radius: 24rpx; margin: 20rpx; padding: 24rpx 0; box-shadow: 0 4rpx 20rpx rgba(0,0,0,.05); }
+    .wx-dp-header { display: flex; align-items: center; justify-content: space-between; padding: 0 32rpx 20rpx; }
+    .wx-dp-arrow { font-size: 36rpx; color: #07c160; padding: 8rpx 20rpx; }
+    .wx-dp-month { font-size: 32rpx; font-weight: 600; color: #333; }
+    .wx-dp-grid { display: flex; flex-wrap: wrap; padding: 0 24rpx; }
+    .wx-dp-cell { width: calc(100% / 7); aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+    .wx-dp-day { font-size: 30rpx; color: #333; }
+    .wx-dp-dot { width: 10rpx; height: 10rpx; border-radius: 50%; margin-top: 4rpx; }
+    .wx-dp-dot.wx-has { background: #07c160; }
+    .wx-dp-range { background: #e8f5e9; }
+    .wx-dp-checkin { background: #07c160; border-radius: 50%; }
+    .wx-dp-checkin .wx-dp-day, .wx-dp-checkout .wx-dp-day { color: #fff; font-weight: 700; }
+    .wx-dp-checkout { background: #07c160; border-radius: 50%; }
+    .wx-dp-past .wx-dp-day { color: #ccc; }
+    
+    .spec-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .spec-table th, .spec-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .spec-table th { background: #f7f7f7; font-weight: 600; color: #333; }
+    .spec-table .current-col { color: #e05252; }
+    .spec-table .wx-col { color: #07c160; }
+    
+    .mobile-mock { width: 375px; margin: 0 auto; background: #f5f5f5; border-radius: 40px; padding: 12px; box-shadow: 0 10px 40px rgba(0,0,0,.15); }
+    .mobile-screen { width: 100%; background: #f5f5f5; border-radius: 32px; overflow: hidden; }
+    
+    .color-swatch { display: inline-flex; align-items: center; gap: 8px; margin-right: 24px; }
+    .color-dot { width: 32px; height: 32px; border-radius: 50%; }
+    .color-name { font-size: 14px; color: #666; }
+    
+    .radius-example { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .radius-box { width: 80px; height: 80px; background: #07c160; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; }
+    .radius-box.sm { border-radius: 8px; }
+    .radius-box.md { border-radius: 16px; }
+    .radius-box.lg { border-radius: 24px; }
+    .radius-box.xl { border-radius: 32px; }
+    
+    .preview-section { padding: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>pms-nimi 微信UI风格优化对比预览</h1>
+    
+    <div class="section">
+      <div class="section-title">设计规范</div>
+      <div class="comparison">
+        <div class="card card-before">
+          <div class="card-title">当前规范</div>
+          <div style="margin-bottom: 20px;">
+            <div class="color-swatch"><div class="color-dot" style="background: #3C5068;"></div><span class="color-name">#3C5068 主色</span></div>
+            <div class="color-swatch"><div class="color-dot" style="background: #e05252;"></div><span class="color-name">#e05252 价格</span></div>
+            <div class="color-swatch"><div class="color-dot" style="background: #52c41a;"></div><span class="color-name">#52c41a 成功</span></div>
+          </div>
+          <div>
+            <div class="radius-example">
+              <div class="radius-box sm">8rpx</div>
+              <div class="radius-box md">16rpx</div>
+            </div>
+            <div style="font-size: 14px; color: #666; margin-top: 10px;">圆角偏小，间距较紧</div>
+          </div>
+        </div>
+        <div class="card card-after">
+          <div class="card-title">微信风格规范</div>
+          <div style="margin-bottom: 20px;">
+            <div class="color-swatch"><div class="color-dot" style="background: #07c160;"></div><span class="color-name">#07c160 主色（微信绿）</span></div>
+            <div class="color-swatch"><div class="color-dot" style="background: #fa5151;"></div><span class="color-name">#fa5151 价格/危险</span></div>
+            <div class="color-swatch"><div class="color-dot" style="background: #f7f7f7;"></div><span class="color-name">#f7f7f7 背景</span></div>
+          </div>
+          <div>
+            <div class="radius-example">
+              <div class="radius-box md">16rpx</div>
+              <div class="radius-box lg">24rpx</div>
+              <div class="radius-box xl">32rpx</div>
+            </div>
+            <div style="font-size: 14px; color: #666; margin-top: 10px;">大圆角、大气间距、渐变按钮</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">规格对比</div>
+      <div class="card">
+        <table class="spec-table">
+          <thead>
+            <tr><th>属性</th><th class="current-col">当前样式</th><th class="wx-col">微信风格</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>主色调</td><td>#3C5068（深蓝灰）</td><td>#07c160（微信绿）</td></tr>
+            <tr><td>价格色</td><td>#e05252（暗红）</td><td>#fa5151（微信红）</td></tr>
+            <tr><td>卡片圆角</td><td>12-16rpx</td><td>20-32rpx</td></tr>
+            <tr><td>按钮圆角</td><td>8-20rpx</td><td>24-40rpx（胶囊型）</td></tr>
+            <tr><td>按钮样式</td><td>纯色填充</td><td>渐变色+阴影</td></tr>
+            <tr><td>阴影强度</td><td>弱（0 2rpx 8rpx）</td><td>适中（0 8rpx 24rpx）</td></tr>
+            <tr><td>间距单位</td><td>16-24rpx</td><td>24-32rpx</td></tr>
+            <tr><td>字体大小</td><td>偏小（24-32rpx）</td><td>适中（28-36rpx）</td></tr>
+            <tr><td>优惠券样式</td><td>普通卡片</td><td>圆角+虚线分割+渐变背景</td></tr>
+            <tr><td>日期选择器</td><td>普通背景</td><td>绿色主题+圆形选中</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">导航栏</div>
+      <div class="comparison">
+        <div class="card card-before">
+          <div class="card-title">当前样式</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="current-nav-bar">
+                <span style="width: 80rpx;">←</span>
+                <span class="current-nav-title">房型详情</span>
+                <span style="width: 80rpx;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-after">
+          <div class="card-title">微信风格</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="wx-nav-bar">
+                <span class="wx-nav-left">←</span>
+                <span class="wx-nav-title">房型详情</span>
+                <span style="width: 80rpx;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">TabBar</div>
+      <div class="comparison">
+        <div class="card card-before">
+          <div class="card-title">当前样式</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen" style="height: 100px;">
+              <div class="current-tab-bar">
+                <div class="current-tab-item active"><span class="current-tab-icon">🏠</span><span class="current-tab-label">首页</span></div>
+                <div class="current-tab-item"><span class="current-tab-icon">📋</span><span class="current-tab-label">订单</span></div>
+                <div class="current-tab-item"><span class="current-tab-icon">👤</span><span class="current-tab-label">我的</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-after">
+          <div class="card-title">微信风格</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen" style="height: 110px;">
+              <div class="wx-tab-bar">
+                <div class="wx-tab-item active"><span class="wx-tab-icon">🏠</span><span class="wx-tab-label">首页</span></div>
+                <div class="wx-tab-item"><span class="wx-tab-icon">📋</span><span class="wx-tab-label">订单</span></div>
+                <div class="wx-tab-item"><span class="wx-tab-icon">👤</span><span class="wx-tab-label">我的</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">房型卡片</div>
+      <div class="comparison">
+        <div class="card card-before">
+          <div class="card-title">当前样式</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="preview-section">
+                <div class="current-room-card">
+                  <div class="current-room-top">
+                    <div class="current-room-img">🏨</div>
+                    <div class="current-room-meta">
+                      <span class="current-room-name">豪华大床房</span>
+                      <span class="current-room-specs">大床 · 45m² · 2人</span>
+                    </div>
+                  </div>
+                  <div class="current-room-bottom">
+                    <span class="current-room-price">¥399 起/晚</span>
+                    <div class="current-book-btn"><span>立即预订</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-after">
+          <div class="card-title">微信风格</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="preview-section">
+                <div class="wx-room-card">
+                  <div class="wx-room-top">
+                    <div class="wx-room-img">🏨</div>
+                    <div class="wx-room-meta">
+                      <span class="wx-room-name">豪华大床房</span>
+                      <span class="wx-room-specs"><span>大床</span><span>45m²</span><span>2人</span></span>
+                    </div>
+                  </div>
+                  <div class="wx-room-bottom">
+                    <div class="wx-room-price-wrap">
+                      <span class="wx-room-price"><span>¥</span>399</span>
+                      <span class="wx-room-saved">比OTA省约¥70</span>
+                    </div>
+                    <div class="wx-book-btn"><span>立即预订</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">订单卡片</div>
+      <div class="comparison">
+        <div class="card card-before">
+          <div class="card-title">当前样式</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="preview-section">
+                <div class="current-order-card">
+                  <div class="current-order-header">
+                    <span class="current-order-no">订单号: 20260722001</span>
+                    <span class="current-order-status">已确认</span>
+                  </div>
+                  <div class="current-order-body">
+                    <span class="current-order-room">豪华大床房</span>
+                    <span class="current-order-date">2026-07-22 → 2026-07-23 · 1晚</span>
+                  </div>
+                  <div class="current-order-footer">
+                    <span class="current-order-price">¥399</span>
+                    <span style="font-size: 24rpx; color: #999;">张三</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-after">
+          <div class="card-title">微信风格</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="preview-section">
+                <div class="wx-order-card">
+                  <div class="wx-order-header">
+                    <span class="wx-order-no">订单号: 20260722001</span>
+                    <span class="wx-order-status">已确认</span>
+                  </div>
+                  <div class="wx-order-body">
+                    <span class="wx-order-room">豪华大床房</span>
+                    <span class="wx-order-date">2026-07-22 → 2026-07-23 · 1晚</span>
+                    <span class="wx-order-guest">入住人: 张三</span>
+                  </div>
+                  <div class="wx-order-footer">
+                    <span class="wx-order-price"><span>共</span>¥399</span>
+                    <div class="wx-order-actions">
+                      <span class="wx-order-action wx-order-action-outline">联系商家</span>
+                      <span class="wx-order-action wx-order-action-primary">查看详情</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">用户卡片（我的页面）</div>
+      <div class="comparison">
+        <div class="card card-before">
+          <div class="card-title">当前样式</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="current-user-card">
+                <div class="current-avatar">👤</div>
+                <div class="current-user-info">
+                  <span class="current-user-name">张三</span>
+                  <span class="current-user-phone">138****8888</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-after">
+          <div class="card-title">微信风格</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="wx-user-card">
+                <div class="wx-avatar">👤</div>
+                <div class="wx-user-info">
+                  <span class="wx-user-name">张三</span>
+                  <span class="wx-user-phone">138****8888</span>
+                  <span class="wx-user-level">金卡会员</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">菜单列表</div>
+      <div class="comparison">
+        <div class="card card-before">
+          <div class="card-title">当前样式</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div style="padding: 24rpx;">
+                <div class="current-menu-list">
+                  <div class="current-menu-item">📋 我的订单 <span class="current-menu-arrow">›</span></div>
+                  <div class="current-menu-item">⭐ 我的优惠券 <span class="current-menu-arrow">›</span></div>
+                  <div class="current-menu-item">🤝 推广员中心 <span class="current-menu-arrow">›</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-after">
+          <div class="card-title">微信风格</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div style="padding: 24rpx;">
+                <div class="wx-menu-list">
+                  <div class="wx-menu-item"><span class="wx-menu-icon">📋</span>我的订单 <span class="wx-menu-arrow">›</span></div>
+                  <div class="wx-menu-item"><span class="wx-menu-icon">⭐</span>我的优惠券 <span class="wx-menu-arrow">›</span></div>
+                  <div class="wx-menu-item"><span class="wx-menu-icon">🤝</span>推广员中心 <span class="wx-menu-arrow">›</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">优惠券</div>
+      <div class="comparison">
+        <div class="card card-before">
+          <div class="card-title">当前样式</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="preview-section">
+                <div class="current-coupon-item">
+                  <div class="current-coupon-left">
+                    <span class="current-coupon-value">¥50</span>
+                    <span class="current-coupon-condition">满300可用</span>
+                  </div>
+                  <div class="current-coupon-right">
+                    <span class="current-coupon-name">新人专享券</span>
+                    <button class="current-claim-btn">立即领取</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-after">
+          <div class="card-title">微信风格</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="preview-section">
+                <div class="wx-coupon-item">
+                  <div class="wx-coupon-left">
+                    <span class="wx-coupon-value"><span>¥</span>50</span>
+                    <span class="wx-coupon-condition">满300可用</span>
+                  </div>
+                  <div class="wx-coupon-right">
+                    <span class="wx-coupon-name">新人专享券</span>
+                    <span class="wx-coupon-desc">入住任意房型可用</span>
+                    <span class="wx-coupon-meta">每人限领1张 · 已领28/100</span>
+                    <button class="wx-claim-btn">立即领取</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">日期选择器</div>
+      <div class="comparison">
+        <div class="card card-before">
+          <div class="card-title">当前样式</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="preview-section">
+                <div class="current-date-picker">
+                  <div class="current-dp-header">
+                    <span class="current-dp-arrow">◀</span>
+                    <span style="font-size: 30rpx; font-weight: 600;">2026年7月</span>
+                    <span class="current-dp-arrow">▶</span>
+                  </div>
+                  <div class="current-dp-grid">
+                    <div class="current-dp-cell"><span class="current-dp-day" style="color: #ddd;">29</span></div>
+                    <div class="current-dp-cell"><span class="current-dp-day" style="color: #ddd;">30</span></div>
+                    <div class="current-dp-cell"><span class="current-dp-day" style="color: #ddd;">1</span></div>
+                    <div class="current-dp-cell"><span class="current-dp-day">2</span></div>
+                    <div class="current-dp-cell"><span class="current-dp-day">3</span></div>
+                    <div class="current-dp-cell"><span class="current-dp-day">4</span></div>
+                    <div class="current-dp-cell"><span class="current-dp-day">5</span></div>
+                    <div class="current-dp-cell current-dp-range current-dp-checkin"><span class="current-dp-day">6</span></div>
+                    <div class="current-dp-cell current-dp-range"><span class="current-dp-day">7</span></div>
+                    <div class="current-dp-cell current-dp-range current-dp-checkout"><span class="current-dp-day">8</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-after">
+          <div class="card-title">微信风格</div>
+          <div class="mobile-mock">
+            <div class="mobile-screen">
+              <div class="preview-section">
+                <div class="wx-date-picker">
+                  <div class="wx-dp-header">
+                    <span class="wx-dp-arrow">◀</span>
+                    <span class="wx-dp-month">2026年7月</span>
+                    <span class="wx-dp-arrow">▶</span>
+                  </div>
+                  <div class="wx-dp-grid">
+                    <div class="wx-dp-cell wx-dp-past"><span class="wx-dp-day">29</span></div>
+                    <div class="wx-dp-cell wx-dp-past"><span class="wx-dp-day">30</span></div>
+                    <div class="wx-dp-cell"><span class="wx-dp-day">1</span><div class="wx-dp-dot wx-has"></div></div>
+                    <div class="wx-dp-cell"><span class="wx-dp-day">2</span><div class="wx-dp-dot wx-has"></div></div>
+                    <div class="wx-dp-cell"><span class="wx-dp-day">3</span><div class="wx-dp-dot wx-has"></div></div>
+                    <div class="wx-dp-cell"><span class="wx-dp-day">4</span><div class="wx-dp-dot wx-has"></div></div>
+                    <div class="wx-dp-cell"><span class="wx-dp-day">5</span><div class="wx-dp-dot wx-has"></div></div>
+                    <div class="wx-dp-cell wx-dp-range wx-dp-checkin"><span class="wx-dp-day">6</span></div>
+                    <div class="wx-dp-cell wx-dp-range"><span class="wx-dp-day">7</span><div class="wx-dp-dot wx-has"></div></div>
+                    <div class="wx-dp-cell wx-dp-range wx-dp-checkout"><span class="wx-dp-day">8</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">按钮样式</div>
+      <div class="comparison">
+        <div class="card card-before">
+          <div class="card-title">当前样式</div>
+          <div class="preview-section" style="text-align: center;">
+            <button class="current-book-btn" style="margin-right: 10px;"><span>立即预订</span></button>
+            <button class="current-book-btn" style="background: #e05252;"><span>删除订单</span></button>
+          </div>
+        </div>
+        <div class="card card-after">
+          <div class="card-title">微信风格</div>
+          <div class="preview-section" style="text-align: center;">
+            <button class="wx-btn-primary" style="margin-right: 10px;">立即预订</button>
+            <button class="wx-btn-outline">取消订单</button>
+            <button class="wx-btn-danger" style="margin-top: 10px;">删除订单</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

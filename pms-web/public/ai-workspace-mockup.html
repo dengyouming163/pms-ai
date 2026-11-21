@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智宿管家 · AI Agent 工作台</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700;900&display=swap');
+
+  :root {
+    --bg-deep: #0a0f1a;
+    --bg-card: rgba(255,255,255,0.06);
+    --border-card: rgba(255,255,255,0.08);
+    --text-primary: #e8ecf2;
+    --text-secondary: #8896ab;
+    --accent: #818cf8;
+    --accent2: #34d399;
+    --danger: #f87171;
+    --warn: #fbbf24;
+    --pulse-green: rgba(52,211,153,0.3);
+    --radius-xl: 24px;
+    --radius-2xl: 32px;
+    --radius-3xl: 40px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Ambient glow orbs */
+  .ambient-orb { position: fixed; border-radius: 50%; filter: blur(120px); z-index: 0; }
+  .orb-1 { width: 600px; height: 600px; background: rgba(99,102,241,0.08); top: -200px; left: -150px; }
+  .orb-2 { width: 500px; height: 500px; background: rgba(52,211,153,0.06); bottom: -150px; right: -100px; }
+  .orb-3 { width: 400px; height: 400px; background: rgba(251,191,36,0.04); top: 40%; left: 50%; }
+
+  /* Main container */
+  .workspace {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+    height: 100vh;
+    padding: 16px 24px;
+    gap: 12px;
+    backdrop-filter: blur(20px);
+  }
+
+  /* Top nav bar */
+  .nav-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    background: var(--bg-card);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-xl);
+    flex-shrink: 0;
+  }
+  .nav-back {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--text-secondary); font-size: 14px; font-weight: 500;
+    text-decoration: none; transition: color 0.2s;
+  }
+  .nav-back:hover { color: var(--text-primary); }
+  .nav-back svg { width: 18px; height: 18px; }
+  .nav-title {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 22px; font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .nav-title .icon {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 8px 32px rgba(99,102,241,0.25);
+  }
+
+  /* Mode toggle switch */
+  .mode-toggle {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 40px; padding: 5px;
+    border: 1px solid var(--border-card);
+  }
+  .mode-toggle button {
+    padding: 10px 22px; border-radius: 35px; border: none;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    color: var(--text-secondary); background: transparent;
+  }
+  .mode-toggle button.active {
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+  }
+
+  /* Main content area */
+  .main-content {
+    display: flex; gap: 16px; flex: 1; min-height: 0;
+  }
+
+  /* Left: Chat panel 60% */
+  .chat-zone {
+    flex: 6; display: flex; flex-direction: column;
+    background: var(--bg-card);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-2xl);
+    overflow: hidden;
+  }
+  .chat-header {
+    padding: 20px 28px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 15px; font-weight: 600;
+    display: flex; align-items: center; gap: 10px;
+    color: var(--text-primary);
+  }
+  .chat-header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); box-shadow: 0 0 12px var(--pulse-green); animation: pulse-dot 2s infinite; }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 24px 28px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+  .msg-bot {
+    display: flex; gap: 12px; max-width: 90%;
+  }
+  .msg-bot .avatar {
+    width: 36px; height: 36px; border-radius: 12px;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .msg-bot .bubble {
+    background: rgba(99,102,241,0.12); border-radius: 4px 20px 20px 20px;
+    padding: 16px 20px; font-size: 14px; line-height: 1.6;
+    border: 1px solid rgba(99,102,241,0.15);
+  }
+  .msg-bot .bubble .insight-mini {
+    margin-top: 12px; padding: 12px 16px;
+    background: rgba(52,211,153,0.08); border-radius: 16px;
+    border: 1px solid rgba(52,211,153,0.15);
+    font-size: 13px;
+  }
+  .msg-bot .bubble .insight-mini .label { color: var(--accent2); font-weight: 600; margin-bottom: 4px; }
+
+  .msg-user { display: flex; justify-content: flex-end; }
+  .msg-user .bubble {
+    background: rgba(255,255,255,0.08); border-radius: 20px 4px 20px 20px;
+    padding: 14px 20px; font-size: 14px; max-width: 70%;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .chat-input-zone {
+    padding: 16px 28px 24px; border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex; gap: 10px;
+  }
+  .chat-input-zone input {
+    flex: 1; padding: 14px 20px; border-radius: 40px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-primary); font-family: inherit; font-size: 14px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .chat-input-zone input:focus { border-color: rgba(99,102,241,0.5); }
+  .chat-input-zone input::placeholder { color: rgba(255,255,255,0.2); }
+  .chat-input-zone button {
+    width: 48px; height: 48px; border-radius: 50%; border: none;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: #fff; font-size: 18px; cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+  }
+  .chat-input-zone button:hover { transform: scale(1.05); }
+
+  .quick-prompts {
+    display: flex; gap: 8px; padding: 0 28px 12px; flex-wrap: wrap;
+  }
+  .quick-prompts span {
+    padding: 8px 16px; border-radius: 40px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.02);
+    font-size: 13px; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .quick-prompts span:hover {
+    border-color: rgba(99,102,241,0.4);
+    color: var(--text-primary);
+    background: rgba(99,102,241,0.08);
+  }
+
+  /* Right: Insights panel 40% */
+  .insights-zone {
+    flex: 4; display: flex; flex-direction: column; gap: 16px;
+    overflow-y: auto; min-height: 0;
+  }
+  .insights-zone::-webkit-scrollbar { width: 4px; }
+  .insights-zone::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+  /* Agent status grid */
+  .agents-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px; flex-shrink: 0;
+  }
+  .agent-card {
+    background: var(--bg-card); backdrop-filter: blur(24px);
+    border: 1px solid var(--border-card); border-radius: var(--radius-xl);
+    padding: 16px; display: flex; flex-direction: column; align-items: center;
+    gap: 8px; text-align: center; transition: border-color 0.2s;
+  }
+  .agent-card:hover { border-color: rgba(255,255,255,0.15); }
+  .agent-card .agent-icon { font-size: 32px; }
+  .agent-card .agent-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+  .agent-card .agent-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 500;
+  }
+  .agent-card .agent-status .s-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .s-active { color: var(--accent2); } .s-active .s-dot { background: var(--accent2); box-shadow: 0 0 8px var(--pulse-green); animation: pulse-dot 2s infinite; }
+  .s-idle { color: var(--text-secondary); } .s-idle .s-dot { background: var(--text-secondary); }
+  .s-checking { color: var(--warn); } .s-checking .s-dot { background: var(--warn); box-shadow: 0 0 8px rgba(251,191,36,0.3); }
+
+  /* Insight cards */
+  .insight-card {
+    background: var(--bg-card); backdrop-filter: blur(24px);
+    border: 1px solid var(--border-card); border-radius: var(--radius-xl);
+    padding: 20px 24px; flex-shrink: 0;
+    border-left: 3px solid;
+    transition: all 0.2s;
+  }
+  .insight-card:hover { background: rgba(255,255,255,0.08); }
+  .insight-card.border-pricing { border-left-color: var(--accent2); }
+  .insight-card.border-customer { border-left-color: var(--accent); }
+  .insight-card .insight-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .insight-card .insight-header .insight-icon { font-size: 20px; }
+  .insight-card .insight-header .insight-tag {
+    font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+  }
+  .tag-l1 { background: rgba(52,211,153,0.15); color: var(--accent2); }
+  .tag-l2 { background: rgba(251,191,36,0.15); color: var(--warn); }
+  .insight-card .insight-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .insight-card .insight-detail { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
+  .insight-card .insight-actions { display: flex; gap: 8px; }
+  .insight-card .insight-actions button {
+    padding: 8px 18px; border-radius: 20px; border: none; font-family: inherit;
+    font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-accept { background: var(--accent2); color: #000; }
+  .btn-accept:hover { box-shadow: 0 4px 16px rgba(52,211,153,0.3); }
+  .btn-dismiss { background: transparent; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.1); }
+  .btn-dismiss:hover { border-color: rgba(255,255,255,0.2); color: var(--text-primary); }
+
+  /* Bottom stats bar */
+  .stats-bar {
+    display: flex; gap: 20px; padding: 14px 28px;
+    background: var(--bg-card); backdrop-filter: blur(24px);
+    border: 1px solid var(--border-card); border-radius: var(--radius-xl);
+    flex-shrink: 0;
+  }
+  .stat-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 20px; border-right: 1px solid rgba(255,255,255,0.06);
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-item .stat-icon { font-size: 22px; }
+  .stat-item .stat-value { font-size: 18px; font-weight: 700; }
+  .stat-item .stat-value.green { color: var(--accent2); }
+  .stat-item .stat-label { font-size: 11px; color: var(--text-secondary); }
+
+  /* Fade-in animation */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+  .delay-1 { animation-delay: 0.1s; }
+  .delay-2 { animation-delay: 0.2s; }
+  .delay-3 { animation-delay: 0.3s; }
+  .delay-4 { animation-delay: 0.4s; }
+</style>
+</head>
+<body>
+
+<div class="ambient-orb orb-1"></div>
+<div class="ambient-orb orb-2"></div>
+<div class="ambient-orb orb-3"></div>
+
+<div class="workspace">
+
+  <!-- Top Nav -->
+  <div class="nav-bar fade-up">
+    <a href="/dashboard" class="nav-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m7-7l-7 7 7 7"/></svg>
+      返回 SaaS 工作台
+    </a>
+    <div class="nav-title">
+      <div class="icon">🤖</div>
+      <span>AI Agent 工作台</span>
+    </div>
+    <div class="mode-toggle" id="modeToggle">
+      <button id="btnSaaS">📋 SaaS</button>
+      <button id="btnAI" class="active">🤖 AI Agent</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+
+    <!-- Left: Chat -->
+    <div class="chat-zone fade-up delay-1">
+      <div class="chat-header"><span class="dot"></span> AI 经营参谋长 · 在线</div>
+      <div class="chat-messages" id="chatMsgs">
+        <div class="msg-bot fade-up delay-2">
+          <div class="avatar">🧠</div>
+          <div class="bubble">
+            早上好，张老板！<strong>7月7日 经营简报</strong><br><br>
+            📊 今日入住率 <strong>82%</strong>（+5%↑）| 收益 <strong>¥12,800</strong>（+8%↑）<br>
+            3间待清洁 · 1间维修中 · 美团2单超时风险<br><br>
+            <div class="insight-mini">
+              <div class="label">💡 定价建议</div>
+              207(豪华大床房)建议周末提价<strong>10%→¥450</strong>，草莓音乐节+去年同期满房，置信度78%
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="quick-prompts">
+        <span onclick="sendMsg('今天怎么样？')">今天怎么样？</span>
+        <span onclick="sendMsg('帮我看看定价')">帮我看看定价</span>
+        <span onclick="sendMsg('最近收益如何？')">最近收益如何？</span>
+        <span onclick="sendMsg('有没有异常？')">有没有异常？</span>
+        <span onclick="sendMsg('本周总结')">本周总结</span>
+      </div>
+      <div class="chat-input-zone">
+        <input type="text" placeholder="输入你的问题..." id="chatInput" onkeydown="if(event.key==='Enter')sendMsg()">
+        <button onclick="sendMsg()">↑</button>
+      </div>
+    </div>
+
+    <!-- Right: Agents + Insights -->
+    <div class="insights-zone fade-up delay-2">
+
+      <!-- Agent Status Grid -->
+      <div class="agents-grid">
+        <div class="agent-card fade-up delay-2">
+          <div class="agent-icon">🧠</div>
+          <div class="agent-name">经营参谋长</div>
+          <div class="agent-status s-active"><span class="s-dot"></span>活跃</div>
+        </div>
+        <div class="agent-card fade-up delay-3">
+          <div class="agent-icon">💰</div>
+          <div class="agent-name">收益管理师</div>
+          <div class="agent-status s-checking"><span class="s-dot"></span>分析中</div>
+        </div>
+        <div class="agent-card fade-up delay-3">
+          <div class="agent-icon">👤</div>
+          <div class="agent-name">客户关系管家</div>
+          <div class="agent-status s-idle"><span class="s-dot"></span>待命中</div>
+        </div>
+        <div class="agent-card fade-up delay-4">
+          <div class="agent-icon">🔧</div>
+          <div class="agent-name">房务管家</div>
+          <div class="agent-status s-checking"><span class="s-dot"></span>巡检中</div>
+        </div>
+        <div class="agent-card fade-up delay-4">
+          <div class="agent-icon">📡</div>
+          <div class="agent-name">OTA 桥接员</div>
+          <div class="agent-status s-active"><span class="s-dot"></span>监控中</div>
+        </div>
+        <div class="agent-card fade-up delay-4">
+          <div class="agent-icon">📱</div>
+          <div class="agent-name">移动助手</div>
+          <div class="agent-status s-idle"><span class="s-dot"></span>休眠</div>
+        </div>
+      </div>
+
+      <!-- Insight Card 1 -->
+      <div class="insight-card border-pricing fade-up delay-3">
+        <div class="insight-header">
+          <span class="insight-icon">💰</span>
+          <span class="insight-tag tag-l2">L2 · 需确认</span>
+        </div>
+        <div class="insight-title">207(豪华大床房) 建议周末提价 10% → ¥450</div>
+        <div class="insight-detail">依倿：草莓音乐节 · 去年同期满房 · 周边已提价8-15%。预期增收¥320。</div>
+        <div class="insight-actions">
+          <button class="btn-accept">采纳执行</button>
+          <button class="btn-dismiss">忽略</button>
+        </div>
+      </div>
+
+      <!-- Insight Card 2 -->
+      <div class="insight-card border-customer fade-up delay-3">
+        <div class="insight-header">
+          <span class="insight-icon">👤</span>
+          <span class="insight-tag tag-l1">L1 · 自动执行</span>
+        </div>
+        <div class="insight-title">张先生 已达金卡标准 · 建议升级 VIP</div>
+        <div class="insight-detail">累计消费 ¥7,200 · 4次入住 · 偏好高楼层安静房。已自动打标签："商务出行""高消费"。</div>
+        <div class="insight-actions">
+          <button class="btn-accept">采纳执行</button>
+          <button class="btn-dismiss">忽略</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom Stats -->
+  <div class="stats-bar fade-up delay-4">
+    <div class="stat-item">
+      <span class="stat-icon">💰</span>
+      <div><div class="stat-value green">¥1,800</div><div class="stat-label">本月AI增收</div></div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">✅</span>
+      <div><div class="stat-value">12</div><div class="stat-label">采纳建议</div></div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">⏰</span>
+      <div><div class="stat-value">~8h</div><div class="stat-label">节约时间</div></div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">🔋</span>
+      <div><div class="stat-value">2.3M</div><div class="stat-label">Token 消耗</div></div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">📊</span>
+      <div><div class="stat-value green">78%</div><div class="stat-label">采纳率</div></div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">🧠</span>
+      <div><div class="stat-value">6/6</div><div class="stat-label">Agent 在线</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Mode toggle
+document.getElementById('btnSaaS').addEventListener('click', function() {
+  this.classList.add('active');
+  document.getElementById('btnAI').classList.remove('active');
+});
+document.getElementById('btnAI').addEventListener('click', function() {
+  this.classList.add('active');
+  document.getElementById('btnSaaS').classList.remove('active');
+});
+
+// Chat send
+function sendMsg(text) {
+  var input = document.getElementById('chatInput');
+  var msg = text || input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  var container = document.getElementById('chatMsgs');
+  var userDiv = document.createElement('div');
+  userDiv.className = 'msg-user fade-up';
+  userDiv.innerHTML = '<div class="bubble">' + msg + '</div>';
+  container.appendChild(userDiv);
+
+  var botDiv = document.createElement('div');
+  botDiv.className = 'msg-bot fade-up';
+  botDiv.innerHTML = '<div class="avatar">🧠</div><div class="bubble">⏳ 正在分析...</div>';
+  container.appendChild(botDiv);
+
+  setTimeout(function() {
+    botDiv.querySelector('.bubble').innerHTML = '收到！AI Agent 正在调取数据并分析中...<br><br>当前系统返回 KPI 均为 0（数据库无运营数据），实际接入后会实时显示真实分析结果。';
+    container.scrollTop = container.scrollHeight;
+  }, 1500);
+
+  container.scrollTop = container.scrollHeight;
+}
+</script>
+
+</body>
+</html>

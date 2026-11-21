@@ -1,0 +1,29 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"strict": false,
+		"jsx": "preserve",
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"esModuleInterop": true,
+		"lib": ["ESNext", "DOM"],
+		"skipLibCheck": true,
+		"noEmit": true,
+		"paths": {
+			"@/*": ["./src/*"]
+		},
+		"types": ["@dcloudio/types", "miniprogram-api-typings"]
+	},
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.d.ts",
+		"src/**/*.tsx",
+		"src/**/*.vue",
+		"pages/**/*.vue",
+		"App.vue",
+		"main.ts"
+	],
+	"exclude": ["node_modules", "dist", "unpackage"]
+}

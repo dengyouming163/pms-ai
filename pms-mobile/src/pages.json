@@ -1,0 +1,271 @@
+{
+	"pages": [
+		{
+			"path": "pages/login/index",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "工作台",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/ai/index",
+			"style": {
+				"navigationBarTitleText": "AI助手",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/video-script/index",
+			"style": {
+				"navigationBarTitleText": "短视频脚本"
+			}
+		},
+		{
+			"path": "pages/rooms/index",
+			"style": {
+				"navigationBarTitleText": "房态",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/rooms/detail",
+			"style": {
+				"navigationBarTitleText": "房间详情"
+			}
+		},
+		{
+			"path": "pages/orders/index",
+			"style": {
+				"navigationBarTitleText": "订单",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/orders/detail",
+			"style": {
+				"navigationBarTitleText": "订单详情"
+			}
+		},
+		{
+			"path": "pages/orders/create",
+			"style": {
+				"navigationBarTitleText": "订单处理"
+			}
+		},
+		{
+			"path": "pages/verify/index",
+			"style": {
+				"navigationBarTitleText": "到店核销"
+			}
+		},
+		{
+			"path": "pages/profile/index",
+			"style": {
+				"navigationBarTitleText": "我的",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/profile/staff",
+			"style": {
+				"navigationBarTitleText": "员工管理"
+			}
+		},
+		{
+			"path": "pages/profile/customers",
+			"style": {
+				"navigationBarTitleText": "客户管理"
+			}
+		},
+		{
+			"path": "pages/profile/pricing",
+			"style": {
+				"navigationBarTitleText": "价格管理"
+			}
+		},
+		{
+			"path": "pages/profile/room-types",
+			"style": {
+				"navigationBarTitleText": "房型管理"
+			}
+		},
+		{
+			"path": "pages/profile/stores",
+			"style": {
+				"navigationBarTitleText": "门店管理"
+			}
+		},
+		{
+			"path": "pages/profile/change-password",
+			"style": {
+				"navigationBarTitleText": "修改密码"
+			}
+		},
+		{
+			"path": "pages/profile/assets",
+			"style": {
+				"navigationBarTitleText": "素材库管理"
+			}
+		},
+		{
+			"path": "pages/profile/price-robot",
+			"style": {
+				"navigationBarTitleText": "自动收益管家"
+			}
+		},
+		{
+			"path": "pages/profile/pricing-center",
+			"style": {
+				"navigationBarTitleText": "定价中心"
+			}
+		},
+		{
+			"path": "pages/profile/voice",
+				"style": {
+					"navigationBarTitleText": "我的声音"
+				}
+			},
+		{
+			"path": "pages/profile/help",
+				"style": { "navigationBarTitleText": "帮助与反馈" }
+			},
+			{
+				"path": "pages/profile/about",
+				"style": { "navigationBarTitleText": "关于我们" }
+			},
+			{
+				"path": "pages/user/index",
+			"style": {
+				"navigationBarTitleText": "个人中心"
+			}
+		},
+		{
+			"path": "pages/creation/index",
+			"style": {
+				"navigationBarTitleText": "创作中心",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/creation/studio",
+			"style": {
+				"navigationBarTitleText": "创作中心"
+			}
+		},
+		{
+			"path": "pages/creation/oneshot",
+			"style": {
+				"navigationBarTitleText": "一键成片"
+			}
+		},
+		{
+			"path": "pages/creation/digital-human",
+			"style": {
+				"navigationBarTitleText": "数字人口播"
+			}
+		},
+		{
+			"path": "pages/creation/xhs",
+			"style": {
+				"navigationBarTitleText": "小红书文案"
+			}
+		},
+		{
+			"path": "pages/assets/task-list",
+			"style": {
+				"navigationBarTitleText": "素材打卡"
+			}
+		},
+		{
+			"path": "pages/assets/task-detail",
+			"style": {
+				"navigationBarTitleText": "任务详情"
+			}
+		},
+		{
+			"path": "pages/assets/task-submit",
+			"style": {
+				"navigationBarTitleText": "拍摄打卡"
+			}
+		},
+		{
+			"path": "pages/assets/task-create",
+			"style": {
+				"navigationBarTitleText": "发布打卡任务"
+			}
+		},
+		{
+			"path": "pages/assets/task-stats",
+			"style": {
+				"navigationBarTitleText": "完成率统计"
+			}
+		},
+		{
+			"path": "pages/assets/templates",
+			"style": {
+				"navigationBarTitleText": "拍摄模板库"
+			}
+		},
+		{
+			"path": "pages/assets/task-rules",
+			"style": { "navigationBarTitleText": "自动化任务" }
+		}
+	],
+	"tabBar": {
+		"custom": false,
+		"color": "#999999",
+		"selectedColor": "#07C160",
+		"backgroundColor": "#FFFFFF",
+		"list": [
+			{
+				"pagePath": "pages/ai/index",
+				"text": "AI 助手",
+				"iconPath": "static/tabbar/tabbar-1.png",
+				"selectedIconPath": "static/tabbar/tabbar-1.png"
+			},
+			{
+				"pagePath": "pages/index/index",
+				"text": "工作台",
+				"iconPath": "static/tabbar/tabbar-5.png",
+				"selectedIconPath": "static/tabbar/tabbar-5.png"
+			},
+			{
+				"pagePath": "pages/rooms/index",
+				"text": "房态",
+				"iconPath": "static/tabbar/tabbar-2.png",
+				"selectedIconPath": "static/tabbar/tabbar-2.png"
+			},
+			{
+				"pagePath": "pages/orders/index",
+				"text": "订单",
+				"iconPath": "static/tabbar/tabbar-3.png",
+				"selectedIconPath": "static/tabbar/tabbar-3.png"
+			},
+			{
+				"pagePath": "pages/profile/index",
+				"text": "我的",
+				"iconPath": "static/tabbar/tabbar-4.png",
+				"selectedIconPath": "static/tabbar/tabbar-4.png"
+			}
+		]
+	},
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "述椿云宿",
+		"navigationBarBackgroundColor": "#FFFFFF",
+		"backgroundColor": "#F5F6FA"
+	},
+	"easycom": {
+		"custom": {
+			"^t-(.*)": "@tdesign/uniapp/$1/$1.vue"
+		}
+	},
+	"uniIdRouter": {}
+}

@@ -1,0 +1,44 @@
+// 微信风格主题变量
+$primary-green: #07C160;
+$primary-green-dark: #06AD56;
+$price-red: #FA5151;
+$warning-orange: #FF9500;
+$info-blue: #576B95;
+$gold: #C8A97E;
+$gold-light: rgba(200, 169, 126, 0.15);
+$gold-glow: rgba(200, 169, 126, 0.25);
+
+// 背景色
+$bg-main: #F5F6FA;
+$bg-card: #FFFFFF;
+$bg-glass: rgba(255, 255, 255, 0.72);
+$bg-ai-message: #E8F8EF;
+
+// 文字色
+$text-primary: #1A1A1A;
+$text-secondary: #666666;
+$text-tertiary: #999999;
+
+// 圆角
+$radius-sm: 8rpx;
+$radius-md: 16rpx;
+$radius-lg: 24rpx;
+$radius-xl: 32rpx;
+$radius-xxl: 48rpx;
+
+// 阴影
+$shadow-card: 0 8rpx 32rpx rgba(0, 0, 0, 0.06);
+$shadow-modal: 0 16rpx 64rpx rgba(0, 0, 0, 0.16);
+$shadow-gold: 0 8rpx 40rpx rgba(200, 169, 126, 0.25);
+
+// 渐变
+$gradient-primary: linear-gradient(135deg, #07C160, #06AD56);
+$gradient-gold: linear-gradient(135deg, #C8A97E, #B89466);
+$gradient-header: linear-gradient(135deg, #07C160 0%, #06AD56 50%, #C8A97E 100%);
+
+// 房态颜色映射（保持与现有类型兼容）
+$room-available: #07C160;
+$room-occupied: #576B95;
+$room-dirty: #FF9500;
+$room-locked: #999999;
+$room-maintenance: #FA5151;

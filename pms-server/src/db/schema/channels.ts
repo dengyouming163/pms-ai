@@ -1,0 +1,50 @@
+import { pgTable, varchar, text, integer, timestamp, jsonb, boolean, numeric } from 'drizzle-orm/pg-core';
+
+// 渠道表
+export const pmsBuiChannels = pgTable('pms_bui_channels', {
+  id: varchar('id', { length: 50 }).primaryKey(),
+  merchantId: varchar('merchant_id', { length: 64 }).notNull().default('default'),
+  storeId: varchar('store_id', { length: 50 }),
+  name: varchar('name', { length: 100 }).notNull(),
+  icon: varchar('icon', { length: 20 }),
+  color: varchar('color', { length: 20 }),
+  type: varchar('type', { length: 30 }).notNull().default('ota'),
+  status: varchar('status', { length: 20 }).notNull().default('active'),
+  todayOrders: integer('today_orders').notNull().default(0),
+  todayRevenue: integer('today_revenue').notNull().default(0),
+  monthOrders: integer('month_orders').notNull().default(0),
+  monthRevenue: integer('month_revenue').notNull().default(0),
+  account: varchar('account', { length: 100 }),
+  balance: integer('balance').notNull().default(0),
+  commissionRate: numeric('commission_rate', { precision: 5, scale: 2 }).default('10.00'),
+  category: varchar('category', { length: 30 }).default('domestic_ota'),
+  autoSync: boolean('auto_sync').default(true),
+  autoPrice: boolean('auto_price').default(false),
+  syncInterval: integer('sync_interval').default(30),
+  lastSyncAt: timestamp('last_sync_at', { withTimezone: true }),
+  features: jsonb('features').$type<string[]>().default([]),
+  description: text('description'),
+  connectedAt: timestamp('connected_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 渠道评价表
+export const pmsBuiReviews = pgTable('pms_bui_reviews', {
+  id: varchar('id', { length: 50 }).primaryKey(),
+  merchantId: varchar('merchant_id', { length: 64 }).notNull().default('default'),
+  channelId: varchar('channel_id', { length: 50 }).notNull(),
+  channelName: varchar('channel_name', { length: 100 }).notNull(),
+  channelIcon: varchar('channel_icon', { length: 20 }),
+  guestName: varchar('guest_name', { length: 50 }).notNull(),
+  rating: integer('rating').notNull(),
+  content: text('content'),
+  roomType: varchar('room_type', { length: 50 }),
+  stayDate: varchar('stay_date', { length: 20 }),
+  replyContent: text('reply_content'),
+  replyStatus: varchar('reply_status', { length: 20 }).notNull().default('pending'),
+  reviewTime: varchar('review_time', { length: 30 }).notNull(),
+  storeId: varchar('store_id', { length: 50 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

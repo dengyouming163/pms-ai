@@ -1,0 +1,12 @@
+-- 素材任务表加 collectible_id（图鉴条目级素材的写回键）
+--
+-- 为什么不复用 node_id：一个字段名不给两种语义。node_id 的语义是
+-- 「这条素材属于哪个节点」，回写目标是 nodes.image；图鉴条目的回写目标是
+-- collectibles.image，两者是不同的表、不同的键。混用会先污染语义，
+-- 再在下一次有人给 nodes 加类似分支时变成真缺陷。
+--
+-- 列宽 50 对齐 pms_bui_wenlv_collectibles.id（varchar(50)）。
+-- 可空：只有 collectible 类型的行才有图鉴条目，其余类型
+-- （background/stamp/cover/icon/narration/anchor/style_bible）与全部历史行同为 NULL。
+-- 不变量：collectible 行 node_id 恒为 NULL，其余行 collectible_id 恒为 NULL（至多一个非空）。
+ALTER TABLE pms_bui_wenlv_asset_jobs ADD COLUMN IF NOT EXISTS collectible_id varchar(50);

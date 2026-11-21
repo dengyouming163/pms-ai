@@ -1,0 +1,82 @@
+/* ========================================
+   TDesign 主题覆盖 — 智宿管家 Premium
+   将 TDesign 默认亮蓝 #0052d9 替换为深邃蓝灰 #3C5068
+   ======================================== */
+
+:root {
+  /* === 品牌色阶（覆盖 TDesign 蓝色系） === */
+  --td-brand-color-1: #F0F3F7;
+  --td-brand-color-2: #DDE4ED;
+  --td-brand-color-3: #B8C5D6;
+  --td-brand-color-4: #8FA2BA;
+  --td-brand-color-5: #6B83A0;
+  --td-brand-color-6: #506A8A;
+  --td-brand-color-7: #3C5068;
+  --td-brand-color-8: #324460;
+  --td-brand-color-9: #283858;
+  --td-brand-color-10: #1E2C50;
+
+  /* === 成功色阶（鼠尾草绿） === */
+  --td-success-color-1: #EFF6F2;
+  --td-success-color-2: #D8EBDF;
+  --td-success-color-3: #B2D7BE;
+  --td-success-color-4: #8CC29D;
+  --td-success-color-5: #6B9B7A;
+  --td-success-color-6: #5A8868;
+  --td-success-color-7: #4A7A5A;
+  --td-success-color: #6B9B7A;
+
+  /* === 警告色阶（温暖茶色） === */
+  --td-warning-color-1: #FBF6F0;
+  --td-warning-color-2: #F4E8DA;
+  --td-warning-color-3: #E8D1B5;
+  --td-warning-color-4: #D4B08A;
+  --td-warning-color-5: #C4955A;
+  --td-warning-color-6: #B08048;
+  --td-warning-color-7: #9C6C38;
+  --td-warning-color: #C4955A;
+
+  /* === 错误色阶（柔和红） === */
+  --td-error-color-1: #FDF4F4;
+  --td-error-color-2: #FAE1E1;
+  --td-error-color-3: #F2B8B8;
+  --td-error-color-4: #E88C8C;
+  --td-error-color-5: #D35A5A;
+  --td-error-color-6: #C04040;
+  --td-error-color-7: #A83030;
+  --td-error-color: #D35A5A;
+
+  /* === 页面背景 === */
+  --td-bg-color-page: #F3F4F6;
+  --td-bg-color-container: #FFFFFF;
+  --td-bg-color-secondarycontainer: #F6F7F9;
+
+  /* === 文字色 === */
+  --td-text-color-primary: #1D2A3A;
+  --td-text-color-secondary: #6B7C8E;
+  --td-text-color-placeholder: #9BA8B5;
+
+  /* === 边框 === */
+  --td-border-level-1-color: #E5E7EB;
+  --td-border-level-2-color: #F0F1F4;
+
+  /* === 圆角 — 移动端大气风格 === */
+  --td-radius-small: 8rpx;
+  --td-radius-medium: 16rpx;
+  --td-radius-large: 28rpx;
+  --td-radius-extraLarge: 36rpx;
+  --td-radius-round: 9999rpx;
+
+  /* === 字体 === */
+  --td-font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --td-font-size-body-medium: 28rpx;
+
+  /* === 间距 === */
+  --td-spacing-1: 8rpx;
+  --td-spacing-2: 16rpx;
+  --td-spacing-3: 24rpx;
+  --td-spacing-4: 32rpx;
+  --td-spacing-5: 48rpx;
+}

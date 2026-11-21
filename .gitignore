@@ -1,0 +1,47 @@
+# 依赖与构建产物
+node_modules/
+.pnpm-store/
+dist/
+.next/
+out/
+build/
+unpackage/
+.venv/
+__pycache__/
+*.pyc
+coverage/
+.pytest_cache/
+.ruff_cache/
+*.tsbuildinfo
+
+# 环境与密钥
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+certs/
+secrets/
+
+# 上传与运行时数据
+uploads/
+*.log
+tmp/
+.tmp/
+
+# 编辑器与工具
+.DS_Store
+.idea/
+.vscode/
+.trae/
+.claude/
+.agents/
+.superpowers/
+worktrees/
+.worktrees/
+
+# 归档文件
+*.zip
+*.tar.gz
+*.tgz

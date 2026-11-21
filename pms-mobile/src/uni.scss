@@ -1,0 +1,30 @@
+/* TDesign 移动端全局主题 */
+@import '@/styles/tdesign-theme.css';
+
+/* PMS 项目级微调 */
+@import '@/styles/tdesign-overrides.scss';
+
+/* 保留现有 Token（业务组件过渡期使用） */
+@import '@/styles/variables.scss';
+@import '@/styles/tokens.scss';
+@import '@/styles/global.scss';
+
+/* 全局盒模型（微信小程序 WXSS 不支持 * 选择器与伪元素，条件编译跳过） */
+/* #ifndef MP-WEIXIN */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+/* #endif */
+
+/* 全局页面基础样式 */
+page {
+  background-color: var(--td-bg-color-page);
+  font-family: var(--td-font-family);
+  font-size: 28rpx;
+  color: var(--td-text-color-primary);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+

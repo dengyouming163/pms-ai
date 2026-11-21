@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>语音录制</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,system-ui,sans-serif;background:linear-gradient(135deg,#7c3aed,#a855f7);min-height:100dvh;display:flex;flex-direction:column;color:#fff}
+.top{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.08)}
+.top h1{font-size:15px;font-weight:600}
+.top span{font-size:12px;opacity:.7}
+.card{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.box{background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:360px;text-align:center;color:#334155;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.text-box{background:#f5f3ff;border-radius:14px;padding:16px;margin-bottom:24px}
+.text-box .label{font-size:11px;color:#7c3aed;margin-bottom:6px}
+.text-box .sentence{font-size:17px;line-height:1.6;font-weight:500;color:#1e293b}
+.btn-rec{width:88px;height:88px;border-radius:50%;background:#ef4444;color:#fff;font-size:32px;border:none;cursor:pointer}
+.btn-rec:active{transform:scale(.96)}
+.btn-rec.recording{animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 18px rgba(239,68,68,0)}}
+.btn-stop{padding:14px 36px;background:#7c3aed;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;margin-top:16px;display:none}
+.status{font-size:13px;margin-top:10px;min-height:24px}
+.status.ok{color:#16a34a}.status.err{color:#ef4444}.status.info{color:#7c3aed}
+.tips-box{margin-top:16px;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;text-align:left}
+.tips-title{font-size:12px;opacity:.8;cursor:pointer;user-select:none}
+.tips-list{margin-top:8px;font-size:11px;line-height:1.8;opacity:.7}
+.tips-list div::before{content:'· '}
+.hidden{display:none}
+.nav{display:flex;gap:12px;padding:20px 24px;background:rgba(255,255,255,.06)}
+.nav button{flex:1;padding:16px;border:none;border-radius:16px;font-size:15px;font-weight:600;color:#fff;background:rgba(255,255,255,.15);cursor:pointer}
+.nav button:active{background:rgba(255,255,255,.25)}
+.nav button:disabled{opacity:.25}
+</style>
+</head>
+<body>
+<div class="top"><h1>语音录制</h1><span id="counter">-</span></div>
+<div class="card"><div class="box">
+  <div class="text-box">
+    <div class="label">📖 请朗读以下文案</div>
+    <div class="sentence" id="sentence">加载中...</div>
+  </div>
+  <div class="tips-box" id="tipsBox">
+    <div class="tips-title" onclick="document.getElementById('tipsList').classList.toggle('hidden')">⚠️ 录音要求（点开查看）</div>
+    <div class="tips-list hidden" id="tipsList">
+      <div>🎙️ 清晰的单人普通话，准确朗读文案</div>
+      <div>🔇 安静环境，无背景噪音、电流声或多人声</div>
+      <div>📡 采样率 ≥ 16 kHz（已设定48kHz）</div>
+      <div>📦 格式 WAV，文件 ≤ 10 MB</div>
+    </div>
+  </div>
+  <button class="btn-rec" id="btnRec" onclick="toggleRecord()">●</button>
+  <div><button class="btn-stop" id="btnStop" onclick="stopAndUpload()">⏹ 停止并上传</button></div>
+  <div class="status" id="status"></div>
+</div></div>
+<div class="nav">
+  <button id="btnPrev" onclick="go(-1)">← 上一条</button>
+  <button id="btnNext" onclick="go(1)">下一条 →</button>
+</div>
+
+<script>
+var API=location.hostname==='localhost'?'http://localhost:20002':location.origin;
+var SAMPLE_RATE=48000;
+var p=new URLSearchParams(location.search);
+var voiceId=p.get('voiceId')||'';  // scenario 已由后端从 DB 读取，无需传参
+var total=parseInt(p.get('total')||'20'),index=parseInt(p.get('index')||'0');
+var recIndex=index;  // 录音开始时的 index，防止中途切句
+var sentences=[],audioCtx=null,source=null,processor=null,stream=null,chunks=[],state='idle';
+
+(function init(){
+  if(!voiceId){S('缺少voiceId');return}
+  fetch(API+'/api/voice/ims/demo?voiceId='+voiceId).then(function(r){return r.json()}).then(function(d){
+    if(d.success&&d.data.demonstrations){sentences=d.data.demonstrations.map(function(x){return x.text});total=sentences.length}
+    U()
+  }).catch(function(){S('加载失败')})
+})();
+function S(t){document.getElementById('sentence').textContent=t}
+function U(){document.getElementById('sentence').textContent=sentences[index]||('第'+(index+1)+'句');document.getElementById('counter').textContent=(index+1)+'/'+total;document.getElementById('btnPrev').disabled=index<=0;document.getElementById('btnNext').disabled=index>=total-1}
+function go(d){
+  if(state==='recording'){S('⚠️ 请先停止录音');return}
+  if(state==='uploading')return;
+  index+=d;recIndex=index;
+  if(index<0)index=0;if(index>=total)index=total-1;
+  U()
+}
+function toggleRecord(){if(state==='idle')startRecord();else if(state==='recording')stopAndUpload()}
+
+function encodeWav(samples,sr){
+  var len=samples.length;
+  // 计算峰值用于温和标准化（最多 3 倍，避免噪音过度放大）
+  var maxA=0.001;for(var i=0;i<len;i++){var a=Math.abs(samples[i]);if(a>maxA)maxA=a}
+  var gain=Math.min(3,0.95/maxA);
+  // 静音阈值：低于峰值 -60dB 视为静音
+  var nf=maxA*0.001;
+  var buf=new ArrayBuffer(44+len*2),v=new DataView(buf);
+  function ws(o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))}
+  ws(0,'RIFF');v.setUint32(4,36+len*2,true);ws(8,'WAVE');ws(12,'fmt ');
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
+  ws(36,'data');v.setUint32(40,len*2,true);
+  for(var i=0;i<len;i++){var s=samples[i];if(Math.abs(s)<nf)s=0;s*=gain;s=Math.max(-1,Math.min(1,s));v.setInt16(44+i*2,s<0?s*0x8000:s*0x7FFF,true)}
+  return new Blob([buf],{type:'audio/wav'});
+}
+
+async function startRecord(){
+  if(state!=='idle')return;chunks=[];
+  recIndex=index;  // 记录开始录音时的句子序号
+  try{
+    // IMS 要求：48000Hz / mono / 16bit WAV。关闭破坏音质的降噪和自动增益。
+    stream=await navigator.mediaDevices.getUserMedia({audio:{
+      sampleRate:{ideal:48000},
+      channelCount:{ideal:1},
+      echoCancellation:false,
+      noiseSuppression:false,
+      autoGainControl:false
+    }});
+    audioCtx=new AudioContext({sampleRate:SAMPLE_RATE});
+    source=audioCtx.createMediaStreamSource(stream);
+    processor=audioCtx.createScriptProcessor(4096,1,1);
+    processor.onaudioprocess=function(e){chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)))};
+    source.connect(processor);processor.connect(audioCtx.destination);
+    state='recording';
+    document.getElementById('btnRec').classList.add('recording');
+    document.getElementById('btnStop').style.display='inline-block';
+    document.getElementById('status').textContent='⏺ 录制中...';document.getElementById('status').className='status info';
+  }catch(e){document.getElementById('status').textContent='麦克风权限被拒绝';document.getElementById('status').className='status err'}
+}
+
+function cleanup(){
+  if(processor){processor.disconnect();processor=null}
+  if(source){source.disconnect();source=null}
+  if(audioCtx){audioCtx.close();audioCtx=null}
+  if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
+}
+
+async function stopAndUpload(){
+  if(state!=='recording')return;
+  cleanup();
+  document.getElementById('btnRec').classList.remove('recording');
+  document.getElementById('btnStop').style.display='none';
+  state='uploading';
+  document.getElementById('status').textContent='⏳ 上传中...';document.getElementById('status').className='status info';
+  try{
+    var len=0;for(var i=0;i<chunks.length;i++)len+=chunks[i].length;
+    var merged=new Float32Array(len),off=0;
+    for(var i=0;i<chunks.length;i++){merged.set(chunks[i],off);off+=chunks[i].length}
+    var wav=encodeWav(merged,SAMPLE_RATE);
+    // 客户端自检：验证 WAV 格式
+    if(wav.size < 44){S('❌ 录音数据异常，请重录');state='idle';return}
+    if(wav.size > 10*1024*1024){S('❌ 录音超过 10MB，请重录');state='idle';return}
+    // 读取 WAV 头确认格式正确
+    var checkBuf=await wav.slice(0,44).arrayBuffer();
+    var check=new DataView(checkBuf);
+    var magic=String.fromCharCode(check.getUint8(0),check.getUint8(1),check.getUint8(2),check.getUint8(3));
+    if(magic!=='RIFF'){S('❌ 录音格式异常('+magic+')，请重试');state='idle';return}
+    console.log('WAV自检通过:',check.getUint32(24,true)+'Hz',check.getUint16(22,true)+'ch',check.getUint16(34,true)+'bit');
+    var fd=new FormData();fd.append('file',new File([wav],'rec_'+voiceId+'_'+recIndex+'.wav',{type:'audio/wav'}));
+    var r1=await fetch(API+'/api/voice/ims/upload',{method:'POST',body:fd});
+    var d1=await r1.json();
+    if(!d1.success)throw new Error(d1.error||'上传失败');
+    await fetch(API+'/api/voice/ims/bind-record',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voiceId:voiceId,index:recIndex,audioUrl:d1.url})});
+    document.getElementById('status').textContent='✅ 上传完成，已同步到PC端';document.getElementById('status').className='status ok';
+    document.getElementById('btnRec').textContent='✓';document.getElementById('btnRec').style.background='#16a34a';
+    setTimeout(function(){document.getElementById('btnRec').textContent='●';document.getElementById('btnRec').style.background='#ef4444'},2000);
+    state='idle';
+  }catch(e){
+    document.getElementById('status').textContent='❌ '+e.message;document.getElementById('status').className='status err';
+    state='idle';
+  }
+}
+</script>
+</body>
+</html>

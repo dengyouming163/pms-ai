@@ -1,0 +1,26 @@
+-- 文旅产品（pms_bui_wenlv_products）按场地过滤的查询索引。
+--
+-- 为什么需要它：`venue_id` 是「场地详情页」按场地过滤产品的**查询键**。
+--   · src/routes/admin/wenlv.ts:178
+--       .where(eq(pmsBuiWenlvProducts.venueId, venueId)).orderBy(desc(pmsBuiWenlvProducts.createdAt))
+--     —— 场地详情页打开一次就走一次，是热路径。
+--   · src/routes/admin/wenlv.ts:144
+--       .where(inArray(pmsBuiWenlvProducts.venueId, ids))
+--     —— 场地列表页按多个场地批量取产品，同一列。
+--
+-- 该列由迁移 0024 加出（`ALTER TABLE pms_bui_wenlv_products ADD COLUMN IF NOT EXISTS venue_id varchar(50)`），
+-- 加列当时**没有**建索引（同文件只给 venue_points 建了 uq_wenlv_venue_points_code 与
+-- idx_wenlv_venue_points_venue 两个）。后来 0025/0027/0033 往本表加列时也没补。
+-- 无索引 ⇒ 上述两条查询都要对 pms_bui_wenlv_products 整表顺序扫描（第二条还要再排序）。
+--
+-- ⚠️ 本索引**不是唯一索引**：一个场地可以挂多个产品，这是正常业务形态。
+--    （对照 0024 给 venue_points.code 建的 uq_* —— 那是「一个码只属于一个点位」的唯一约束，
+--      语义不同，不要因为「都在 wenlv 系」就照抄 uq_ 前缀。）
+--
+-- 可重复执行（纯幂等）：本文件**只建索引，无任何数据回填/UPDATE**，
+-- 且 CREATE INDEX 带 IF NOT EXISTS ⇒ 连跑多遍结果相同、不报错。
+-- （对照：0033 写的是「只可执行一次」，那是因为它有 `is_selected` 的非幂等回填 —— 本文件没有回填。）
+--
+-- 命名与写法照 0024 的既有范式（小写无引号、idx_<表名去掉前缀>_<列>）。
+CREATE INDEX IF NOT EXISTS idx_wenlv_products_venue
+  ON pms_bui_wenlv_products(venue_id);

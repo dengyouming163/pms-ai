@@ -1,0 +1,48 @@
+-- 剧本成局形态（solo 单人 / group 多人 / both 两者皆可）。本列是**声明**：「排场次 ⟺ group｜both、
+-- 下单选场次」是**消费侧**（场次表 / 下单）的语义，**不在本表上兑现**。
+--
+-- ⚠️ 与既有的 mode（narrative 剧情 / rally 集章）是**两根正交轴**，六象限都合法（2 × 3；原写「四象限」是 play_mode 只有 solo/group 两个值时的旧读数，2026-09-25 订正）：
+--    叙事·单人、叙事·多人、叙事·两者皆可、集章·单人、集章·多人、集章·两者皆可。别把两者混为一谈。
+--
+-- 存量行全部取默认值 solo。选它作默认的理由是一个**假定**（**未逐行实测**）：
+-- 线上现存的剧本都是「购票后 validDays 天内随到随玩」的单人模型
+-- （pms_platform_wenlv_products.valid_days 就是这个语义）。
+--
+-- ⚠️ 本目录的编号迁移**不在 drizzle/meta/_journal.json 里**（2026-09-25 核：journal 只有 idx 0 的 0000）。
+--    **但「不在 journal 里」≠「靠手工应用」** —— 本仓的正式通路是登记进 `Dockerfile` 的 CMD 清单，
+--    本文件已登记进那份清单（仓库级闸：src/db/schema/__tests__/drizzle-migration-registration.test.ts）。
+--
+-- 🔴 **但「登记了」≠「本次上线会跑」。** 那份清单**烘焙在镜像里**，而 pms-server 走**覆盖式部署**
+--    （overlay，不重建镜像）⇒ 本次上线本文件**不会自动跑，须手工 `psql -f` 一次**；
+--    「每次容器启动重跑」描述的是**将来重建镜像之后**的状态。同款坑见 `Dockerfile:21`，
+--    逐字先例见 `drizzle/0038_wenlv_design_assets_target.sql:34-36`（那三行才是先例句，:32-33 是另一段）。
+--    漏掉这一步的后果不是「列迟到」，而是**立刻 500**：schema 已声明 playMode ⇒
+--      · **读**：任何**整行** `db.select().from(pmsBuiWenlvProducts)` 命中 42703；
+--      · **写**：`db.insert(pmsBuiWenlvProducts)` 同样 42703 —— drizzle 的 `insertOrder`
+--        （`pg-core/dialect.cjs`）把 `Table.Symbol.Columns` **全量**列名放进 INSERT 列表，
+--        没给值的列写 `default` ⇒ **「只插部分字段」躲不开缺列**。
+--    **半径**（2026-09-25 实测）—— 顶层判据：
+--      grep -rn '\.from(pmsBuiWenlvProducts)' src --include=*.ts | grep -v '__tests__\|\.test\.ts' | wc -l
+--      ⇒ **29** 处引用该表：其中**整行** select（**会**中 42703）**16** 处，**显式投影**
+--      `db.select({ … }).from(…)` **13** 处（**不**读该列 ⇒ 不受影响，半径止于此）。
+--      INSERT 命中 **4** 处：`routes/admin/wenlv.ts:1397`（POST 建产品）、`db/seed-wenlv-sample.ts:73`、
+--      `db/seed-wenlv-rally-sample.ts:141`、`test-utils/wenlv-narrative-fixture.ts:183`。
+--      ⚠️ 最后那处**只被 `__tests__/` import**（判据：`grep -rn 'wenlv-narrative-fixture' src`）
+--      ⇒ 它是**测试夹具**。「4」是**路径过滤**（排除 `__tests__/`、`.test.ts`）的产物，
+--      **不等于**「4 处生产路径」—— 换个更宽/更窄的过滤就会得别的数。要数「生产 INSERT」就说清谓词。
+--      **「16」怎么手工复现**（别只照抄数字）：
+--        · 单行 `db.select().from(pmsBuiWenlvProducts)` **14** 处 ——
+--          `grep -rn 'db\.select()\.from(pmsBuiWenlvProducts)' src --include=*.ts | grep -v '__tests__\|\.test\.ts' | wc -l`
+--          （分布：`routes/admin/wenlv.ts` 6、`routes/mini/wenlv.ts` 3、`services/wenlv-asset-gen-scheduler.ts` 2、
+--            `routes/admin/wenlv-asset-gen.ts` 2、`db/seed-wenlv-rally-sample.ts` 1）
+--        · **+ 换行写的整行 select 2 处**：`src/db/seed-wenlv-sample.ts:59-60`、`src/db/seed-wenlv-rally-sample.ts:127-128`
+--          —— `db.select()` 与 `.from(...)` 断成两行，**单行 grep 数不到**，但它们同样会中 42703。
+--          ⚠️ 行号写成 `:59-60` 是**两行都给**：`:59`/`:127` 是 `db.select()` 那行、`.from(` 在 `:60`/`:128`；
+--          本段其它锚点（如 `wenlv-asset-gen.ts:930`）给的是 `.from(` 那行 —— 别只写单行号，读者会以为引错了。
+--      🔴 **别把它再写回「14 处」，也别改成「29 处」**：14 是「单行字面量」这个**排版巧合**（漏 2），
+--      29 把 13 处不受影响的投影也算进去了 —— **两个数都不是「会中招的处数」（16）**。
+--      ⚠️ 举例别举 `db.select({ … })` 的落点（如 `wenlv-asset-gen.ts:930`、`wenlv-design.ts:273`）——
+--      那两处是**显式投影**，缺列**不会**让它们报错，举它们等于自证这段是猜的。
+--    ⇒ 两个通路（启动清单 / 手工）都会重复执行，所以语句**必须可重入**（本文件纯幂等，跑几遍都一样）。
+ALTER TABLE pms_bui_wenlv_products
+  ADD COLUMN IF NOT EXISTS play_mode varchar(10) NOT NULL DEFAULT 'solo';
