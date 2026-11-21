@@ -42,10 +42,10 @@ EXPOSE 9090
 #      而 0033 故意不在本清单里）⇒ **全新库必须先手工跑 0033**；否则 0038 的 DO 块报 42703 原子回滚、
 #      **两列永不建**，而 schema 已声明它们 ⇒ 该模块读接口全 500（即 `:20` 那个后果，只是成因是依赖）。
 #
-# ⚠️ 入口脚本里那条 psql **没带 `-v ON_ERROR_STOP`** ⇒ **语句级报错不会让 `|| exit 1` 触发**，
-#    容器照样起得来（2026-09-20 在**本地容器 pms-pg-sop / 库 aipms** 实测，**非生产**：
-#    重跑 0000 报 25 条 ERROR、0001 报 47 条，退出码**均为 0**）。
-#    `|| exit 1` 实际只兜住 psql 致命错 —— 最主要的就是**清单里的文件不存在**。
+# ⚠️ 入口脚本里的 psql **带 `-v ON_ERROR_STOP=1`** ⇒ **语句级报错也会让脚本非 0 退出**、
+#    容器起不来。原 CMD 不带该参数时，重跑 0000 报 25 条、0001 报 47 条，退出码仍为 0
+#    （已修复的旧行为）；现在被豁免的迁移若自动重跑会直接阻断启动，故继续留在
+#    NEVER_AUTO_RUN 里（理由仍是「不该自动跑」）。
 #    ⇒ 上面这些理由是「**不该自动跑**」，**不是**「会炸容器」；别拿「反正不炸」当登记它们的理由。
 # 启动前先执行建表迁移（幂等）：mini 模块 + 站内消息/订阅授权/满意度回访 + 自动收益管家（price-robot 一期 4 表 + 二期 plans/targetDate）+ 素材库打卡体系 + value 列 + 自动化任务规则 + 幂等唯一索引 + 定价中心（daily_price/holidays/config 加列）+ 平台订单字段（0017）+ 文旅集章（0021 rally 档位/领取台账、0022 claims 核销门店列、0023 全局设计系统两表+既有表扩展）+ 场地与点位（0024 venues/venue_points 两表 + products 4 列 + nodes venue_point_id）+ 采风与生成（0025 venue_points photos 列、culture_materials 表、products ai_input 列）+ 采集人归属（0026 venue_points / culture_materials 各加 created_by 列，可空不回填）、素材生产（0027 asset_jobs 表 + design_assets.venue_id + nodes.narration_url + products 的 style_bible/style_anchor_url 两列）、铺码四态（0028 venue_points 六列 + nodes venue_point_id 索引）、游客端问题上报（0029 client_reports 表）；并补回此前遗漏的 0018/0019/0020 三个幂等迁移；并补登记遗漏的 0002/0030/0032 与新增 0034/0035/0036（0036 design_assets 加剧本级列 product_id + 索引 + 只补空的回填；0037 信标设备台账表（beacons 一表 + mac 唯一索引 + uuid/major/minor 组合唯一索引 + venue/point 两索引，纯 IF NOT EXISTS）；0038 design_assets 加坐标两列（target_kind/target_id + 索引 + 从 asset_jobs **一次性**回填，重跑整块跳过）；0039 场地网络调研（venue_research 一表 + venue_id 唯一索引 + 素材/点位各加 research_id 列，纯 IF NOT EXISTS、零回填）；0040 内容侧剧本成局形态（pms_bui_wenlv_products 加 play_mode 列，默认 solo，纯 ADD COLUMN IF NOT EXISTS、零回填）；wenlv-team-m1 内容侧团队准入（progress 加 session_id 列 + 旧整表唯一索引换两条部分唯一索引 + sessions 队伍表；纯 IF NOT EXISTS、零回填、含一条有意的 DROP INDEX IF EXISTS）；0041 内容侧免费剧本（pms_bui_wenlv_products 加 is_free 列默认 false、pms_bui_wenlv_progress 加 visit_count 列默认 0，纯 ADD COLUMN IF NOT EXISTS、零回填）；0031/0033 因回填非幂等**故意不登记**，理由见上面的 ⚠️）
 CMD ["pnpm", "start"]

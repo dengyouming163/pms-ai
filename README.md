@@ -13,16 +13,20 @@
 
 ## 启动
 
+当前阶段（`pms-agent` 尚未实现）使用业务三件套一键启动：
+
 ```powershell
 # 1. 准备环境变量
 Copy-Item deploy\.env.example .env
 
-# 2. 启动业务三件套（数据库/缓存/后端/前端均容器内构建）
+# 2. 启动数据库/缓存/后端/前端（均容器内构建）
 docker compose up -d postgres redis pms-server pms-web
 
 # 3. 访问管理后台
 # http://localhost:3000
 ```
+
+> 若 3000 被占用，可用 `WEB_PORT` 覆盖：`$env:WEB_PORT=13000; docker compose up -d pms-web`，然后访问 `http://localhost:13000`。
 
 健康检查（可选）：
 
@@ -30,7 +34,7 @@ docker compose up -d postgres redis pms-server pms-web
 bash deploy/healthcheck.sh
 ```
 
-> `pms-agent/` 当前为空骨架，将在 M1 后续任务实现；在此之前 `docker compose up -d` 全量启动会因缺少 pms-agent/Dockerfile 失败，按上面的命令只启动业务服务即可。
+> `pms-agent` 将在 M1 后续任务实现，届时加入一键启动；当前请按上面的命令只启动业务三件套，不要直接 `docker compose up -d`（会因缺少 pms-agent/Dockerfile 失败）。
 
 ## 文档
 

@@ -6,6 +6,10 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
+# rewrites 在 next build 时写入 routes-manifest，需在此阶段确定后端地址
+ARG PMS_SERVER_URL=http://pms-server:9090
+ENV PMS_SERVER_URL=${PMS_SERVER_URL}
+
 # build.sh / start.sh 依赖 bash；libc6-compat 供 Next.js 的原生依赖使用
 RUN apk add --no-cache bash libc6-compat && \
     npm config set registry https://registry.npmmirror.com && \

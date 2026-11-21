@@ -2,7 +2,7 @@
 -- 注：仓库 journal 与 schema 长期脱节导致 drizzle-kit generate 需交互确认，
 --     本文件按 drizzle-kit 输出格式手工等价生成（CREATE TABLE + 唯一索引）。
 --> statement-breakpoint
-CREATE TABLE "pms_price_robot_config" (
+CREATE TABLE IF NOT EXISTS "pms_price_robot_config" (
 	"id" text PRIMARY KEY NOT NULL,
 	"merchant_id" text NOT NULL,
 	"store_id" text NOT NULL,
@@ -18,9 +18,9 @@ CREATE TABLE "pms_price_robot_config" (
 	"updated_at" timestamptz DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX "price_robot_config_store_room_uq" ON "pms_price_robot_config" USING btree ("store_id","room_type_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "price_robot_config_store_room_uq" ON "pms_price_robot_config" USING btree ("store_id","room_type_id");
 --> statement-breakpoint
-CREATE TABLE "pms_price_robot_auth" (
+CREATE TABLE IF NOT EXISTS "pms_price_robot_auth" (
 	"id" text PRIMARY KEY NOT NULL,
 	"date" text NOT NULL,
 	"merchant_id" text NOT NULL,
@@ -35,9 +35,9 @@ CREATE TABLE "pms_price_robot_auth" (
 	"status" text DEFAULT 'confirmed' NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX "price_robot_auth_date_room_uq" ON "pms_price_robot_auth" USING btree ("date","store_id","room_type_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "price_robot_auth_date_room_uq" ON "pms_price_robot_auth" USING btree ("date","store_id","room_type_id");
 --> statement-breakpoint
-CREATE TABLE "pms_price_robot_tasks" (
+CREATE TABLE IF NOT EXISTS "pms_price_robot_tasks" (
 	"id" text PRIMARY KEY NOT NULL,
 	"date" text NOT NULL,
 	"slot" text NOT NULL,
@@ -56,11 +56,11 @@ CREATE TABLE "pms_price_robot_tasks" (
 	"created_at" timestamptz DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX "price_robot_task_uq" ON "pms_price_robot_tasks" USING btree ("date","slot","store_id","room_type_id","channel");
+CREATE UNIQUE INDEX IF NOT EXISTS "price_robot_task_uq" ON "pms_price_robot_tasks" USING btree ("date","slot","store_id","room_type_id","channel");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "price_robot_tasks_store_date_status_idx" ON "pms_price_robot_tasks" USING btree ("store_id","date","status");
 --> statement-breakpoint
-CREATE TABLE "pms_price_robot_logs" (
+CREATE TABLE IF NOT EXISTS "pms_price_robot_logs" (
 	"id" text PRIMARY KEY NOT NULL,
 	"task_id" text NOT NULL,
 	"before_price" numeric,

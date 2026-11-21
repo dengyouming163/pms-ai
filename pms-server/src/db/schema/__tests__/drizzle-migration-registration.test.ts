@@ -18,14 +18,10 @@ import { readFileSync, readdirSync } from 'node:fs';
  * 断言「`drizzle/*.sql` 的**全集** ⊆ 已登记 ∪ 豁免」，且豁免项**必须自证不可自动执行**。
  * 不是「新增的都已登记」——「新增」测试无从判断；全集相等更强、也更难被绕过。
  *
- * ## ⚠️ 一个必须记住的前提：CMD 的 psql **没有** `ON_ERROR_STOP`
- * 所以**语句级报错不会让 `|| exit 1` 触发**，容器照样起得来。
- * 2026-09-20 实测（本地容器 `pms-pg-sop`，把文件按 CMD 的原样调用，不带 `-v ON_ERROR_STOP`）：
- *   · 重跑 `0000`：25 条 ERROR，**退出码 0**
- *   · 重跑 `0001`：47 条 ERROR，**退出码 0**
- *   · 对照：同一条报错语句带 `-v ON_ERROR_STOP=1` 时退出码 3
- * `|| exit 1` 实际只兜住 psql **致命**错 —— 最主要的就是**清单里的文件不存在**（本文件最后一条测试）。
- * ⇒ 下面豁免的理由是「**不该自动跑**」，**不是**「会炸容器」。别拿「反正不炸」当登记它们的理由。
+ * ## ⚠️ 一个必须记住的前提：启动 psql **带** `ON_ERROR_STOP`
+ * 所以**语句级报错也会让脚本非 0 退出**、容器起不来。
+ * ⇒ 下面这些迁移「不该自动跑」的理由必须继续成立：幂等的就该登记；
+ *   重跑会报错 / 会改写数据的，就留在 NEVER_AUTO_RUN 里。
  */
 
 const DRIZZLE_DIR = new URL('../../../../drizzle/', import.meta.url);
@@ -237,14 +233,13 @@ describe('drizzle 迁移 ↔ Dockerfile CMD 登记一致性', () => {
     expect(dup, `CMD 清单里重复登记：${[...new Set(dup)].join(', ')}`).toEqual([]);
   });
 
-  it('CMD 的 psql 不带 ON_ERROR_STOP —— 豁免理由建立在这个前提上', () => {
+  it('启动 psql 带 ON_ERROR_STOP —— 语句级错误必须让容器启动失败', () => {
     const df = readFileSync(ENTRYPOINT, 'utf-8');
     expect(
-      df.includes('ON_ERROR_STOP'),
-      '入口脚本里加了 ON_ERROR_STOP ⇒ **语句级报错也会让 `|| exit 1` 触发、容器起不来**，' +
-        '本文件 NEVER_AUTO_RUN 里「不该自动跑」的理由（不是「会炸容器」）以及 Dockerfile 注释' +
-        '都必须重新评估。改这一处前请先重跑 0000/0001/0031/0033 的失效路径。',
-    ).toBe(false);
+      df,
+      '入口脚本里的 psql 必须带 `-v ON_ERROR_STOP=1`：否则裸 CREATE TABLE / ADD COLUMN 等语句级错误' +
+        '只会刷 ERROR，容器照常启动，schema 与数据库静默漂移。',
+    ).toContain('-v ON_ERROR_STOP=1');
   });
 });
 

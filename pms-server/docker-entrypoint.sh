@@ -12,6 +12,7 @@ fi
 
 psql_cmd() {
   PGPASSWORD="${PG_PASSWORD}" psql \
+    -v ON_ERROR_STOP=1 \
     -h "${PG_HOST}" \
     -p "${PG_PORT:-5432}" \
     -U "${PG_USER}" \
