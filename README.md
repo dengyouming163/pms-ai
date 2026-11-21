@@ -17,12 +17,17 @@
 # 1. 准备环境变量
 Copy-Item deploy\.env.example .env
 
-# 2. 启动服务
+# 2. 预构建前端（pms-web/Dockerfile 复用本地 .next 产物）
+cd pms-web; pnpm install; pnpm build; cd ..
+
+# 3. 启动服务
 docker compose up -d
 
-# 3. 访问管理后台
+# 4. 访问管理后台
 # http://localhost:20001
 ```
+
+> 当前 Dockerfile 复用本地构建产物；M1 Task 3 会改为容器内多阶段构建。
 
 > `pms-agent/` 当前为空骨架，将在 M1 后续任务实现。
 
