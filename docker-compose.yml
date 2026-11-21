@@ -64,7 +64,7 @@ services:
       - PORT=9090
       - PMS_AGENT_HOST=pms-agent
       - PMS_AGENT_PORT=8000
-      - AGENT_API_URL=http://pms-agent:8000
+      - AGENT_API_URL=http://pms-agent:8000/api
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
       - BAILIAN_WORKSPACE_ID=${BAILIAN_WORKSPACE_ID}
       - BAILIAN_TTS_MODEL=${BAILIAN_TTS_MODEL:-cosyvoice-v3-plus}

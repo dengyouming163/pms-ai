@@ -15,7 +15,7 @@ export const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN || (() 
 export const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 /** pms-agent 服务地址 */
-export const AGENT_API_URL = process.env.AGENT_API_URL || 'http://localhost:8000';
+export const AGENT_API_URL = process.env.AGENT_API_URL || 'http://localhost:8000/api';
 
 /** 按需读取环境变量（调用时才校验，避免未配置微信参数时服务无法启动） */
 export function requireEnv(key: string): string {
