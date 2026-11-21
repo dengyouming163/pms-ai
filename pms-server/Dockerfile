@@ -15,7 +15,7 @@ COPY drizzle/ ./drizzle/
 COPY drizzle.config.ts tsconfig.json ./
 COPY scripts/ ./scripts/
 EXPOSE 9090
-# ⚠️ **新增迁移必须追加到下面 CMD 的列表末尾**（幂等 SQL 已放 drizzle/ 还不够）。
+# ⚠️ **新增迁移必须追加到 `docker-entrypoint.sh` 的列表末尾**（幂等 SQL 已放 drizzle/ 还不够）。
 #    这个列表是生产唯一的自动迁移机制 —— deploy.sh 的兜底清单只到 0017。
 #    漏登记＝新列永远不建，而 schema 里已声明 ⇒ drizzle 整行 select 命中 42703 ⇒ 该模块读接口全 500。
 #    ⚠️ 本列表烘焙在镜像里，而 pms-server 走覆盖式部署（不重建镜像）⇒ 新迁移登记了也**不会自动跑**，必须手工 psql -f（0033/0036 同待遇）。
@@ -42,15 +42,15 @@ EXPOSE 9090
 #      而 0033 故意不在本清单里）⇒ **全新库必须先手工跑 0033**；否则 0038 的 DO 块报 42703 原子回滚、
 #      **两列永不建**，而 schema 已声明它们 ⇒ 该模块读接口全 500（即 `:20` 那个后果，只是成因是依赖）。
 #
-# ⚠️ CMD 里那条 psql **没带 `-v ON_ERROR_STOP`** ⇒ **语句级报错不会让 `|| exit 1` 触发**，
+# ⚠️ 入口脚本里那条 psql **没带 `-v ON_ERROR_STOP`** ⇒ **语句级报错不会让 `|| exit 1` 触发**，
 #    容器照样起得来（2026-09-20 在**本地容器 pms-pg-sop / 库 aipms** 实测，**非生产**：
 #    重跑 0000 报 25 条 ERROR、0001 报 47 条，退出码**均为 0**）。
 #    `|| exit 1` 实际只兜住 psql 致命错 —— 最主要的就是**清单里的文件不存在**。
 #    ⇒ 上面这些理由是「**不该自动跑**」，**不是**「会炸容器」；别拿「反正不炸」当登记它们的理由。
 # 启动前先执行建表迁移（幂等）：mini 模块 + 站内消息/订阅授权/满意度回访 + 自动收益管家（price-robot 一期 4 表 + 二期 plans/targetDate）+ 素材库打卡体系 + value 列 + 自动化任务规则 + 幂等唯一索引 + 定价中心（daily_price/holidays/config 加列）+ 平台订单字段（0017）+ 文旅集章（0021 rally 档位/领取台账、0022 claims 核销门店列、0023 全局设计系统两表+既有表扩展）+ 场地与点位（0024 venues/venue_points 两表 + products 4 列 + nodes venue_point_id）+ 采风与生成（0025 venue_points photos 列、culture_materials 表、products ai_input 列）+ 采集人归属（0026 venue_points / culture_materials 各加 created_by 列，可空不回填）、素材生产（0027 asset_jobs 表 + design_assets.venue_id + nodes.narration_url + products 的 style_bible/style_anchor_url 两列）、铺码四态（0028 venue_points 六列 + nodes venue_point_id 索引）、游客端问题上报（0029 client_reports 表）；并补回此前遗漏的 0018/0019/0020 三个幂等迁移；并补登记遗漏的 0002/0030/0032 与新增 0034/0035/0036（0036 design_assets 加剧本级列 product_id + 索引 + 只补空的回填；0037 信标设备台账表（beacons 一表 + mac 唯一索引 + uuid/major/minor 组合唯一索引 + venue/point 两索引，纯 IF NOT EXISTS）；0038 design_assets 加坐标两列（target_kind/target_id + 索引 + 从 asset_jobs **一次性**回填，重跑整块跳过）；0039 场地网络调研（venue_research 一表 + venue_id 唯一索引 + 素材/点位各加 research_id 列，纯 IF NOT EXISTS、零回填）；0040 内容侧剧本成局形态（pms_bui_wenlv_products 加 play_mode 列，默认 solo，纯 ADD COLUMN IF NOT EXISTS、零回填）；wenlv-team-m1 内容侧团队准入（progress 加 session_id 列 + 旧整表唯一索引换两条部分唯一索引 + sessions 队伍表；纯 IF NOT EXISTS、零回填、含一条有意的 DROP INDEX IF EXISTS）；0041 内容侧免费剧本（pms_bui_wenlv_products 加 is_free 列默认 false、pms_bui_wenlv_progress 加 visit_count 列默认 0，纯 ADD COLUMN IF NOT EXISTS、零回填）；0031/0033 因回填非幂等**故意不登记**，理由见上面的 ⚠️）
-CMD sh -c 'for f in mini-m1.sql mini-m2-douyin-platform.sql inbox-m1.sql inbox-m2-order-id-not-null.sql subscribe-auths-m1.sql satisfaction-surveys-m1.sql satisfaction-surveys-m2.sql stores-platformization-m1.sql mp-config-m1.sql 0002_add_ota_store_key.sql 0003_price-robot.sql 0007_price_robot_phase2.sql 0004_add_asset_tables.sql 0005_add_asset_value_column.sql 0006_add_asset_task_rules.sql 0008_add_task_rule_id.sql 0009_add_asset_room_type_ids.sql 0010_asset_task_rule_unique.sql 0011_grant_assets_manage.sql 0012_add_asset_name.sql 0013_add_price_robot_settings.sql 0014_widen_pricing_rules_ids.sql 0015_add_asset_sop_fields.sql 0016_add_pricing_center.sql 0017_add_platform_order_fields.sql 0018_add_checkin_orders.sql 0019_add_checkin_order_amount.sql 0020_wenlv_content.sql 0021_wenlv_rally.sql 0022_wenlv_claims_redeem_store.sql 0023_wenlv_design_system.sql 0024_wenlv_venue_point.sql 0025_wenlv_survey.sql 0026_wenlv_survey_attribution.sql 0027_wenlv_asset_gen.sql 0028_wenlv_placement_state.sql 0029_wenlv_client_reports.sql 0030_wenlv_judge_answer_normalize.sql 0032_wenlv_asset_jobs_collectible.sql 0034_wenlv_products_venue_idx.sql 0035_wenlv_human_review.sql 0036_wenlv_design_assets_product.sql 0037_wenlv_beacons.sql 0038_wenlv_design_assets_target.sql 0039_wenlv_venue_research.sql 0040_wenlv_play_mode.sql 0041_wenlv_free_script.sql 0042_wenlv_characters.sql 0043_wenlv_npcs.sql 0044_wenlv_nodes_npc.sql 0045_wenlv_progress_character_id.sql wenlv-team-m1.sql 0047_wenlv_nodes_map_coords.sql 0048_wenlv_teams.sql 0049_wenlv_teams_progress.sql 0050_wenlv_venue_cover_image.sql 0051_wenlv_teams_completed_at.sql 0046_wenlv_product_snapshots.sql 0052_wenlv_npc_persona.sql 0053_wenlv_nodes_npc_driver.sql 0054_wenlv_dialogues.sql 0056_wenlv_dialogues_team.sql 0055_wenlv_npc_relationships.sql 0057_wenlv_npc_jobs.sql 0058_wenlv_npc_jobs_node_id.sql 0059_wenlv_dialogues_visual_anchors.sql 0060_wenlv_triggers.sql 0061_wenlv_player_progress.sql 0062_wenlv_nodes_ar_san.sql 0063_wenlv_collectibles_qr.sql 0064_wenlv_nodes_ar_asset_urls.sql 0068_wenlv_npc_jobs_general_fields.sql 0069_wenlv_rewards_merchandise_type.sql 0070_wenlv_merch_redeems.sql 0071_wenlv_rewards_stock_sku.sql 0072_wenlv_claims_qrcode.sql 0073_wenlv_node_edges.sql 0075_wenlv_immersive_atoms.sql 0076_wenlv_director.sql 0077_wenlv_merchant_platform_link.sql 0078_wenlv_script_rooms.sql 0079_wenlv_unified_rebuild.sql 0080_wenlv_drop_old_tables.sql 0081_wenlv_merchant_master.sql 0082_director_alert_handles.sql 0083_checkin_order_entry_backfill.sql; do PGPASSWORD="${PG_PASSWORD}" psql -h "${PG_HOST}" -p "${PG_PORT:-5432}" -U "${PG_USER}" -d "${PG_DATABASE}" -f "drizzle/$f" || exit 1; done && pnpm start'
+CMD ["pnpm", "start"]
 #
-# ⚠️ **关于上面这一行 CMD 清单：它刻意不按数值升序，别「顺手排好」。**
+# ⚠️ **关于迁移清单（已移至 `docker-entrypoint.sh`）：它刻意不按数值升序，别「顺手排好」。**
 #    · 数值段里只有一处逆序：`0007_price-robot-phase2.sql` 紧跟在 `0003_price-robot.sql` 之后，
 #      而 `0004~0006`（素材库三块）反在它后面 —— **看着**是按主题分组（price-robot 两期贴在一起），
 #      不像笔误；该处之后到 `0042_wenlv_characters.sql` 严格升序。
@@ -60,14 +60,19 @@ CMD sh -c 'for f in mini-m1.sql mini-m2-douyin-platform.sql inbox-m1.sql inbox-m
 #      每加一条迁移它就过期一次，而下面那条仓库级闸（`drizzle-migration-registration.test.ts`）
 #      已经在守「登记」这件事，不需要一个手写的数字再守一遍。
 #      要数就现场数（在 pms-server/ 下，逐条列出 / 只数数值段）：
-#        grep -v '^#' Dockerfile | grep -o 'for f in [^;]*' | tr ' ' '\n' | grep '\.sql$'
-#        grep -v '^#' Dockerfile | grep -o 'for f in [^;]*' | tr ' ' '\n' | grep -cE '^[0-9]'
+#        grep -v '^#' docker-entrypoint.sh | grep -o 'for f in [^;]*' | tr ' ' '\n' | grep '\.sql$'
+#        grep -v '^#' docker-entrypoint.sh | grep -o 'for f in [^;]*' | tr ' ' '\n' | grep -cE '^[0-9]'
 #      ⚠️ **别用「跑那条 vitest」来数**：它输出里最醒目的是**用例数**（不是清单项数），照它数会数错对象。
 #         也**别指望读 `registeredMigrations()`** —— 那个函数**没有导出**，文件外面读不到。
 #    · ⇒ **别为「升序」另加闸**：那要么逼你改执行顺序，要么写成「只准这一处例外」（等于没闸）。
 #      重复项已由仓库级闸兜着 —— `it('CMD 清单里没有重复项')`，见
-#      `src/db/schema/__tests__/drizzle-migration-registration.test.ts`。
+#      `src/db/schema/__tests__/drizzle-migration-registration.test.ts`（该闸读 docker-entrypoint.sh）。
 #
 # 📌 本注释**放在 CMD 之后**（而非上方规则块旁）是刻意的：该文件的 `:18-51` 行号被多份计划
 #    与 `.sql` 头注引用（`Dockerfile:21`/`:48`/`:50`/`:51` 等），在上方插行会**把引用全部推漂**。
 #    注释放末尾 ⇒ 前面行号逐字不变。**要补写本文件注释时请沿用同一位次。**
+
+# 启动入口：docker-entrypoint.sh 先执行建表/迁移，成功后再 exec 上面的 CMD。
+# 追加在本文件末尾是为了不打乱 `:18-51` 的既有行号引用（见上）。
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]

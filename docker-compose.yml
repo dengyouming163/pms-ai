@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -34,7 +32,7 @@ services:
   pms-server:
     build: ./pms-server
     ports:
-      - "0.0.0.0:20002:9090"
+      - "127.0.0.1:9090:9090"
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,7 +116,7 @@ services:
       - WENLV_VIDEO_PROVIDER=${WENLV_VIDEO_PROVIDER:-}
       - WENLV_VIDEO_UNIT_PRICE=${WENLV_VIDEO_UNIT_PRICE:-}
       - MEDIAKIT_API_KEY=${MEDIAKIT_API_KEY}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:20001}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
       - ALIYUN_ACCESS_KEY_ID=${ALIYUN_ACCESS_KEY_ID}
       - ALIYUN_ACCESS_KEY_SECRET=${ALIYUN_ACCESS_KEY_SECRET}
       - OSS_REGION=${OSS_REGION:-oss-cn-beijing}
@@ -153,8 +151,8 @@ services:
 
   pms-agent:
     build: ./pms-agent
-    expose:
-      - "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
     depends_on:
       - pms-server
     environment:
@@ -176,7 +174,7 @@ services:
       - PMS_SERVER_URL=http://pms-server:9090
       - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
       - REDIS_URL=redis://redis:6379
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:20001}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
     networks:
       - pms-net
     restart: unless-stopped
@@ -184,7 +182,7 @@ services:
   pms-web:
     build: ./pms-web
     ports:
-      - "${WEB_PORT:-20001}:5000"
+      - "127.0.0.1:${WEB_PORT:-3000}:5000"
     depends_on:
       - pms-server
     environment:

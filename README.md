@@ -17,19 +17,20 @@
 # 1. 准备环境变量
 Copy-Item deploy\.env.example .env
 
-# 2. 预构建前端（pms-web/Dockerfile 复用本地 .next 产物）
-cd pms-web; pnpm install; pnpm build; cd ..
+# 2. 启动业务三件套（数据库/缓存/后端/前端均容器内构建）
+docker compose up -d postgres redis pms-server pms-web
 
-# 3. 启动服务
-docker compose up -d
-
-# 4. 访问管理后台
-# http://localhost:20001
+# 3. 访问管理后台
+# http://localhost:3000
 ```
 
-> 当前 Dockerfile 复用本地构建产物；M1 Task 3 会改为容器内多阶段构建。
+健康检查（可选）：
 
-> `pms-agent/` 当前为空骨架，将在 M1 后续任务实现。
+```bash
+bash deploy/healthcheck.sh
+```
+
+> `pms-agent/` 当前为空骨架，将在 M1 后续任务实现；在此之前 `docker compose up -d` 全量启动会因缺少 pms-agent/Dockerfile 失败，按上面的命令只启动业务服务即可。
 
 ## 文档
 

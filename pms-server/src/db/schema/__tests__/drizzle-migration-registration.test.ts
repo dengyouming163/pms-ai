@@ -5,7 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
  * 「`drizzle/` 里有迁移、但没登记进 Dockerfile CMD」这件事必须变成不可能。
  *
  * ## 为什么需要这条测试
- * 生产唯一的**自动**迁移机制是 `Dockerfile` 里那条手写的
+ * 生产唯一的**自动**迁移机制是 `docker-entrypoint.sh` 里那条手写的
  * `for f in … ; do psql … -f "drizzle/$f" || exit 1; done`
  * （`deploy.sh` 的兜底清单只到 `0017`，且只在 `./deploy.sh server` 那一支跑）。
  * 清单是**手写的**，所以「把 SQL 放进 `drizzle/` 就以为完事」会让新列**永远不建** ——
@@ -29,7 +29,7 @@ import { readFileSync, readdirSync } from 'node:fs';
  */
 
 const DRIZZLE_DIR = new URL('../../../../drizzle/', import.meta.url);
-const DOCKERFILE = new URL('../../../../Dockerfile', import.meta.url);
+const ENTRYPOINT = new URL('../../../../docker-entrypoint.sh', import.meta.url);
 
 /**
  * 豁免：这些**不进启动清单**，缺它们**不是遗漏**。
@@ -66,14 +66,14 @@ const NEVER_AUTO_RUN: Record<string, string> = {
     '同文件另含 DROP COLUMN IF EXISTS driver_type 与 CHECK 重建（语句本身幂等，但与一次性回填同文件），须手工 psql 执行一次',
 };
 
-/** 从 Dockerfile 的 CMD 里解析出迁移清单。 */
+/** 从 docker-entrypoint.sh 的启动清单里解析出迁移清单。 */
 function registeredMigrations(): string[] {
-  const df = readFileSync(DOCKERFILE, 'utf-8');
-  const m = df.match(/for f in ([^;]*); do /);
+  const df = readFileSync(ENTRYPOINT, 'utf-8');
+  const m = df.match(/for f in ([^;]*); do\b/);
   if (!m) {
     throw new Error(
-      'Dockerfile 里找不到 CMD 的 `for f in … ; do` 迁移清单 —— 本测试的**前提**失效了。' +
-        '请先修测试（或修 Dockerfile），不要直接放行：本测试的价值正来自它盯着那份清单。',
+      'docker-entrypoint.sh 里找不到 `for f in … ; do` 迁移清单 —— 本测试的**前提**失效了。' +
+        '请先修测试（或修入口脚本），不要直接放行：本测试的价值正来自它盯着那份清单。',
     );
   }
   return m[1].split(/\s+/).filter(Boolean);
@@ -185,7 +185,7 @@ describe('drizzle 迁移 ↔ Dockerfile CMD 登记一致性', () => {
   });
 
   it('CMD 用 drizzle/$f 取文件（本测试假定迁移都在 drizzle/ 下）', () => {
-    expect(readFileSync(DOCKERFILE, 'utf-8')).toContain('-f "drizzle/$f"');
+    expect(readFileSync(ENTRYPOINT, 'utf-8')).toContain('-f "drizzle/$f"');
   });
 
   it('drizzle/ 下每个迁移都已登记进 CMD，或落在豁免表里', () => {
@@ -195,9 +195,9 @@ describe('drizzle 迁移 ↔ Dockerfile CMD 登记一致性', () => {
     );
     expect(
       unregistered,
-      `以下迁移存在于 drizzle/ 但没登记进 Dockerfile CMD：\n  ${unregistered.join('\n  ')}\n` +
+      `以下迁移存在于 drizzle/ 但没登记进 docker-entrypoint.sh 的启动清单：\n  ${unregistered.join('\n  ')}\n` +
         '⇒ 它们**永远不会自动执行**。若恰好含建表/加列，schema 已声明而库里没有 ⇒ 42703 ⇒ 读接口全 500。\n' +
-        '修法：把文件名追加到 Dockerfile CMD 清单末尾（**仅幂等 SQL 可登记**）；' +
+        '修法：把文件名追加到 docker-entrypoint.sh 清单末尾（**仅幂等 SQL 可登记**）；' +
         '若确实不可自动重跑，则加进本文件的 NEVER_AUTO_RUN 并写明理由。',
     ).toEqual([]);
   });
@@ -238,11 +238,10 @@ describe('drizzle 迁移 ↔ Dockerfile CMD 登记一致性', () => {
   });
 
   it('CMD 的 psql 不带 ON_ERROR_STOP —— 豁免理由建立在这个前提上', () => {
-    const df = readFileSync(DOCKERFILE, 'utf-8');
-    const cmd = df.match(/^CMD .*$/m)?.[0] ?? '';
+    const df = readFileSync(ENTRYPOINT, 'utf-8');
     expect(
-      cmd.includes('ON_ERROR_STOP'),
-      'CMD 里加了 ON_ERROR_STOP ⇒ **语句级报错也会让 `|| exit 1` 触发、容器起不来**，' +
+      df.includes('ON_ERROR_STOP'),
+      '入口脚本里加了 ON_ERROR_STOP ⇒ **语句级报错也会让 `|| exit 1` 触发、容器起不来**，' +
         '本文件 NEVER_AUTO_RUN 里「不该自动跑」的理由（不是「会炸容器」）以及 Dockerfile 注释' +
         '都必须重新评估。改这一处前请先重跑 0000/0001/0031/0033 的失效路径。',
     ).toBe(false);
