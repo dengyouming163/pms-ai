@@ -13,18 +13,18 @@
 
 ## 启动
 
-```bash
+```powershell
 # 1. 准备环境变量
-cp deploy/.env.example .env
+Copy-Item pms-server\.env.example pms-server\.env
 
 # 2. 启动服务
 docker compose up -d
 
 # 3. 访问管理后台
-# http://localhost:3000
+# http://localhost:20001
 ```
 
-> `docker-compose.yml` 与 `deploy/.env.example` 将在后续部署任务中补齐。
+> `pms-agent/` 当前为空骨架，将在 M1 后续任务实现。
 
 ## 文档
 
