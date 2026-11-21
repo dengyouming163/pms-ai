@@ -1,0 +1,202 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${DB_NAME:-aipms}
+      POSTGRES_USER: ${DB_USER:-gate}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "127.0.0.1:15433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - pms-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gate} -d ${DB_NAME:-aipms}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:16379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - pms-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  pms-server:
+    build: ./pms-server
+    ports:
+      - "0.0.0.0:20002:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # 生产标记。此前 pms-server 块漏设，导致服务内所有 `process.env.NODE_ENV === 'production'`
+      # 闸门在生产恒假：index.ts 全局兜底会回 err.message（含 SQL/参数），
+      # wenlv-pay 的测试金额忽略闸门、WENLV_BYPASS_TICKET 双守卫一并失效。勿删。
+      - NODE_ENV=production
+      - LANG=C.UTF-8
+      - TZ=Asia/Shanghai
+      - PG_HOST=postgres
+      - PG_PORT=5432
+      - PG_DATABASE=${DB_NAME:-aipms}
+      - PG_USER=${DB_USER:-gate}
+      - PG_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+      - PMS_SERVER_TOKEN=${PMS_SERVER_TOKEN}
+      # 员工成交工作台（企微自建应用 OAuth 免登）
+      - WECOM_CORP_ID=${WECOM_CORP_ID:-}
+      - WECOM_AGENT_ID=${WECOM_AGENT_ID:-}
+      - WECOM_AGENT_SECRET=${WECOM_AGENT_SECRET:-}
+      - WECOM_OAUTH_REDIRECT=${WECOM_OAUTH_REDIRECT:-}
+      - REDIS_URL=redis://redis:6379
+      - PORT=9090
+      - PMS_AGENT_HOST=pms-agent
+      - PMS_AGENT_PORT=8000
+      - AGENT_API_URL=http://pms-agent:8000
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - BAILIAN_WORKSPACE_ID=${BAILIAN_WORKSPACE_ID}
+      - BAILIAN_TTS_MODEL=${BAILIAN_TTS_MODEL:-cosyvoice-v3-plus}
+      # ---- 文旅 S3 素材生产（文生图 / 提示词 LLM）----
+      # 这里是**显式白名单**（本服务没有 env_file），没列进来的变量改了 .env 也进不了容器。
+      # 后果不是报错而是**静默降级**：WENLV_IMAGE_PROVIDER 缺失 → getImageProvider 回落 mock
+      # → 整批出占位图、状态全 succeeded、账面记 ¥0 —— 而 S3 的交付判据正是「花了多少钱」。
+      # 所以哪怕后面几个都有代码内默认值，也必须列在这里，否则「改 .env 换模型/换价」
+      # 在容器里根本不生效（2026-09-14 终审 Important-2）。
+      # ⚠️ 部署核对项：`docker exec <pms-server> env | grep -E 'WENLV_|ARK_'` 必须看到它们**有值**。
+      - WENLV_IMAGE_PROVIDER=${WENLV_IMAGE_PROVIDER:-}
+      - ARK_API_KEY=${ARK_API_KEY:-}
+      - WENLV_IMAGE_MODEL=${WENLV_IMAGE_MODEL:-}
+      - ARK_BASE_URL=${ARK_BASE_URL:-}
+      - WENLV_PROMPT_MODEL=${WENLV_PROMPT_MODEL:-}
+      - WENLV_IMAGE_UNIT_PRICE=${WENLV_IMAGE_UNIT_PRICE:-}
+      - WENLV_TTS_UNIT_PRICE=${WENLV_TTS_UNIT_PRICE:-}
+      # 文本 LLM 的**分价**（元/千 token，Task 3 块 B1）。输入与输出**各一个价**：
+      # 提示词侧是长输入短输出，图/文同一个模型的输入输出单价本就不同，
+      # 用单一价会把「这批钱花在输入还是输出上」这个唯一能优化的信息抹掉。
+      # 不列在这里的后果与上面那段注释同款：容器里改了 .env 也**静默不生效**，
+      # 账面上一直走 pricing.ts 的内置默认价（PROMPT_DEFAULT），而没有任何告警。
+      # ⚠️ 本仓 compose-env-gate.test.ts 正是抓这个的闸 —— 代码里读了却没列进来会直接红。
+      - WENLV_PROMPT_MODEL_INPUT_PRICE=${WENLV_PROMPT_MODEL_INPUT_PRICE:-}
+      - WENLV_PROMPT_MODEL_OUTPUT_PRICE=${WENLV_PROMPT_MODEL_OUTPUT_PRICE:-}
+      # 资产生成**总闸**（Task 2）。必须列在这里，否则「在 .env 里写 1 再重启」是**静默无效**的
+      # —— 而这恰恰是 env 这条闸的唯一用途（内存开关那条走 admin /pause，不需要 compose）。
+      # 代码侧只认 `=== '1'`，故未设/空串 = 未暂停；空默认值是安全的。
+      # ⚠️ 它**不是**测试旁路开关（不满足 MUST_BE_ABSENT 的语义）：它是生产可用的运维急停，
+      #    且仅暂停、不绕过任何计费或鉴权。
+      - WENLV_ASSET_GEN_PAUSED=${WENLV_ASSET_GEN_PAUSED:-}
+      # 批次花费熔断上限（元/批，Task 11）。`batch-budget.ts` 读它，不列进来则容器里改了
+      # .env 也**静默不生效**（一直是代码内置默认 ¥20）—— 与上面几个同款的缝。
+      # 空默认值是安全的：`batchBudgetLimit()` 对空串 trim 后判空，回落到内置默认 ¥20，
+      # 不会像 `Number('')` 那样被当成「显式定价 0 = 本批一分钱不许花」。
+      - WENLV_BATCH_BUDGET_YUAN=${WENLV_BATCH_BUDGET_YUAN:-}
+      # 评审（看图打分）模型（Task 12）。`llm-vision.ts` 的 reviewModel() 读它。
+      # 不列进来的后果与上面同款：容器里改了 .env 也**静默不生效**，一直回落到
+      # 代码内置的 qwen-vl-max —— 且它是一条**特别隐蔽**的缝：评审模型必须是**视觉**模型，
+      # 误配成纯文本模型（如 qwen-max）不会报错，只会让打分变成基于瞎猜的自信输出。
+      # 空默认值是安全的：reviewModel() 对空串 trim 后判空，回落到 qwen-vl-max。
+      - WENLV_REVIEW_MODEL=${WENLV_REVIEW_MODEL:-}
+      # NPC 对话 LLM 模型（npc-dialogue 的目标判据/态度评分/谎言追踪等模块，及 node_refiner 评审）。
+      # 不列进来则容器里改了 .env 也**静默不生效**，一直回落代码内置的 qwen-plus。
+      - WENLV_DIALOGUE_MODEL=${WENLV_DIALOGUE_MODEL:-}
+      # 导演引擎（DM）单轮消息交错上限，`routes/mini/wenlv-dialogue.ts` 读它，代码内置默认 3。
+      - WENLV_DM_STAGGER_LIMIT=${WENLV_DM_STAGGER_LIMIT:-}
+      # AR 灵体视频的 provider 与单价（video-provider.ts / pricing.ts）。
+      # 与 WENLV_IMAGE_PROVIDER 同款静默降级缝：缺 provider 回落 mock（不产真实视频、账面 ¥0），
+      # 缺单价则按模型查表/回落默认价；不列进来容器里改 .env 不生效。
+      - WENLV_VIDEO_PROVIDER=${WENLV_VIDEO_PROVIDER:-}
+      - WENLV_VIDEO_UNIT_PRICE=${WENLV_VIDEO_UNIT_PRICE:-}
+      - MEDIAKIT_API_KEY=${MEDIAKIT_API_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:20001}
+      - ALIYUN_ACCESS_KEY_ID=${ALIYUN_ACCESS_KEY_ID}
+      - ALIYUN_ACCESS_KEY_SECRET=${ALIYUN_ACCESS_KEY_SECRET}
+      - OSS_REGION=${OSS_REGION:-oss-cn-beijing}
+      - OSS_BUCKET=${OSS_BUCKET:-pms-zhisu}
+      - SERVER_BASE_URL=http://132.232.166.40:20002
+      # 私域小程序（pms-nimi）
+      - MINI_JWT_SECRET=${MINI_JWT_SECRET}
+      - WX_MINI_APPID=${WX_MINI_APPID:-}
+      - WX_MINI_SECRET=${WX_MINI_SECRET:-}
+      - WX_SUBSCRIBE_TEMPLATE_ID=${WX_SUBSCRIBE_TEMPLATE_ID:-}
+      - WXPAY_SP_MCHID=${WXPAY_SP_MCHID:-}
+      - WXPAY_SUB_MCHID=${WXPAY_SUB_MCHID:-}
+      - WXPAY_TEST_AMOUNT_FEN=${WXPAY_TEST_AMOUNT_FEN:-}
+      # 套餐订单测试金额（分）：正整数=强制套餐支付该分值（1=1分钱），0/空=真实金额。测试完成上线前必须置空。
+      - PRODUCT_PAY_TEST_AMOUNT_FEN=${PRODUCT_PAY_TEST_AMOUNT_FEN:-}
+      - WXPAY_APIV3_KEY=${WXPAY_APIV3_KEY:-}
+      - WXPAY_CERT_SERIAL=${WXPAY_CERT_SERIAL:-}
+      - WXPAY_PRIVATE_KEY=${WXPAY_PRIVATE_KEY:-}
+      - WXPAY_NOTIFY_BASE=${WXPAY_NOTIFY_BASE:-}
+      - WXPAY_PUBLIC_KEY_ID=${WXPAY_PUBLIC_KEY_ID:-}
+      - WXPAY_PUBLIC_KEY=${WXPAY_PUBLIC_KEY:-}
+      - WX_MP_APPID=${WX_MP_APPID:-}
+      - WX_MP_SECRET=${WX_MP_SECRET:-}
+      - WX_MP_TOKEN=${WX_MP_TOKEN:-}
+      - WX_MP_AES_KEY=${WX_MP_AES_KEY:-}
+    networks:
+      - pms-net
+    restart: unless-stopped
+    volumes:
+      - uploads_data:/app/uploads
+      - ./pms-server/certs:/app/certs:ro
+
+  pms-agent:
+    build: ./pms-agent
+    expose:
+      - "8000"
+    depends_on:
+      - pms-server
+    environment:
+      # 配额按「本地日」切分（wenlv_material_assist 的 today_key /
+      # _seconds_until_local_midnight 都用裸 datetime.now()）。漏设时容器是 UTC，
+      # 「本地午夜」实为北京时间 08:00 —— 与「对采集员而言今天是他手表上的今天」不符。
+      # 与 pms-server 块同一个惯例。勿删。
+      - TZ=Asia/Shanghai
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.deepseek.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+      - LLM_API_KEY_DEEPSEEK=${LLM_API_KEY_DEEPSEEK:-}
+      - LLM_BASE_URL_DEEPSEEK=${LLM_BASE_URL_DEEPSEEK:-https://api.deepseek.com/v1}
+      - LLM_MODEL_DEEPSEEK=${LLM_MODEL_DEEPSEEK:-deepseek-v4-flash}
+      - LLM_API_KEY_DASHSCOPE=${LLM_API_KEY_DASHSCOPE:-}
+      - LLM_BASE_URL_DASHSCOPE=${LLM_BASE_URL_DASHSCOPE:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      - LLM_MODEL_DASHSCOPE=${LLM_MODEL_DASHSCOPE:-qwen-max}
+      - PMS_SERVER_URL=http://pms-server:9090
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:20001}
+    networks:
+      - pms-net
+    restart: unless-stopped
+
+  pms-web:
+    build: ./pms-web
+    ports:
+      - "${WEB_PORT:-20001}:5000"
+    depends_on:
+      - pms-server
+    environment:
+      - PMS_SERVER_URL=http://pms-server:9090
+    networks:
+      - pms-net
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads_data:
+
+networks:
+  pms-net:
+    driver: bridge

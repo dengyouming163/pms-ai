@@ -390,8 +390,8 @@ route.post('/', async (c) => {
       headers['Authorization'] = authHeader;
     }
 
-    const aiPort = process.env.PMS_AI_PORT || '9091';
-    const aiHost = process.env.PMS_AI_HOST || 'localhost';
+    const aiPort = process.env.PMS_AGENT_PORT || '9091';
+    const aiHost = process.env.PMS_AGENT_HOST || 'localhost';
 
     const res = await fetch(`http://${aiHost}:${aiPort}/api/chat`, {
       method: 'POST',

@@ -71,8 +71,8 @@ route.post('/calendar/generate', async (c) => {
   }
 
   // 通过 pms-agent 的内容规划能力生成
-  const aiHost = process.env.PMS_AI_HOST || 'localhost';
-  const aiPort = process.env.PMS_AI_PORT || '8000';
+  const aiHost = process.env.PMS_AGENT_HOST || 'localhost';
+  const aiPort = process.env.PMS_AGENT_PORT || '8000';
 
   try {
     const res = await fetch(`http://${aiHost}:${aiPort}/api/chat`, {

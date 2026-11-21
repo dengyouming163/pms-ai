@@ -3495,8 +3495,8 @@ route.post('/products/:id/characters/generate', async (c) => {
   const productId = c.req.param('id');
   const product = await getProductOr404(c, productId);
   if (product instanceof Response) return product;
-  const aiHost = process.env.PMS_AI_HOST || 'localhost';
-  const aiPort = process.env.PMS_AI_PORT || '8000';
+  const aiHost = process.env.PMS_AGENT_HOST || 'localhost';
+  const aiPort = process.env.PMS_AGENT_PORT || '8000';
   let data: any;
   try {
     const res = await fetch(`http://${aiHost}:${aiPort}/api/wenlv-creation/refine`, {
@@ -3602,8 +3602,8 @@ route.post('/products/:id/generate-full', async (c) => {
   const product = await getProductOr404(c, productId);
   if (product instanceof Response) return product;
 
-  const aiHost = process.env.PMS_AI_HOST || 'localhost';
-  const aiPort = process.env.PMS_AI_PORT || '8000';
+  const aiHost = process.env.PMS_AGENT_HOST || 'localhost';
+  const aiPort = process.env.PMS_AGENT_PORT || '8000';
 
   // 步骤 1：同步生成角色卡（与 /characters/generate 同构）
   let characterCount = 0;
@@ -3747,8 +3747,8 @@ route.post('/npcs/:id/voice', async (c) => {
   if (!npc) return c.json({ success: false, error: 'NPC 不存在' }, 404);
 
   // === 调 AI crew S3（npc_voice stage，全量重新合成） ===
-  const aiHost = process.env.PMS_AI_HOST || 'localhost';
-  const aiPort = process.env.PMS_AI_PORT || '8000';
+  const aiHost = process.env.PMS_AGENT_HOST || 'localhost';
+  const aiPort = process.env.PMS_AGENT_PORT || '8000';
   let data: any;
   try {
     const res = await fetch(`http://${aiHost}:${aiPort}/api/wenlv-creation/refine`, {

@@ -13,8 +13,8 @@ import { refineNode } from '../node-refiner/index.js';
 import { repairProductFlow } from '../flow-repair/index.js';
 import { getScriptRoomByContentId, getScriptRoomChapters, createChapter, createScene, createFlow, updateScene } from '../script-room.js';
 
-const AI_HOST = process.env.PMS_AI_HOST || 'localhost';
-const AI_PORT = process.env.PMS_AI_PORT || '8000';
+const AI_HOST = process.env.PMS_AGENT_HOST || 'localhost';
+const AI_PORT = process.env.PMS_AGENT_PORT || '8000';
 const CHECK_INTERVAL_MS = 10_000;
 const STALE_MINUTES = 5;
 
