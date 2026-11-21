@@ -2,6 +2,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // deploy/ 下的部署脚本测试（如演示种子数据）不在 src 内，需显式加入收集范围
+    include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)', '../deploy/**/*.test.ts'],
     // constants.ts 顶层会立即校验这两个环境变量，测试环境注入桩值避免 import 即崩溃。
     // 2026-10-07 改为「shell 显式传入优先」：RUN_DB=1 PG_DATABASE=aipms_test vitest run
     // 时能透传到测试进程（桩值仅在未传入时兜底），否则 DB 类测试永远连不上指定库。

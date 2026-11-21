@@ -1,0 +1,58 @@
+{
+  "competitors": [
+    {
+      "id": "cmp-yq-qy-01",
+      "storeId": "store-yunqi-qingyan",
+      "hotelName": "青岩别院精品民宿",
+      "platform": "携程",
+      "competitorRoomType": "庭院大床房",
+      "ourRoomTypeId": "rt-yq-qy-01",
+      "basePrice": 458
+    },
+    {
+      "id": "cmp-yq-qy-02",
+      "storeId": "store-yunqi-qingyan",
+      "hotelName": "古镇栖居客栈",
+      "platform": "美团",
+      "competitorRoomType": "古镇双床房",
+      "ourRoomTypeId": "rt-yq-qy-02",
+      "basePrice": 508
+    },
+    {
+      "id": "cmp-yq-zy-01",
+      "storeId": "store-yunqi-zhenyuan",
+      "hotelName": "舞阳河畔酒店",
+      "platform": "携程",
+      "competitorRoomType": "河景大床房",
+      "ourRoomTypeId": "rt-yq-zy-01",
+      "basePrice": 488
+    },
+    {
+      "id": "cmp-yq-zy-02",
+      "storeId": "store-yunqi-zhenyuan",
+      "hotelName": "镇远古城客栈",
+      "platform": "美团",
+      "competitorRoomType": "古城双床房",
+      "ourRoomTypeId": "rt-yq-zy-02",
+      "basePrice": 578
+    },
+    {
+      "id": "cmp-yq-xj-01",
+      "storeId": "store-yunqi-xijiang",
+      "hotelName": "苗岭观景酒店",
+      "platform": "携程",
+      "competitorRoomType": "苗寨观景房",
+      "ourRoomTypeId": "rt-yq-xj-01",
+      "basePrice": 618
+    },
+    {
+      "id": "cmp-yq-xj-02",
+      "storeId": "store-yunqi-xijiang",
+      "hotelName": "千户苗寨客栈",
+      "platform": "飞猪",
+      "competitorRoomType": "千户景观家庭房",
+      "ourRoomTypeId": "rt-yq-xj-02",
+      "basePrice": 868
+    }
+  ]
+}
