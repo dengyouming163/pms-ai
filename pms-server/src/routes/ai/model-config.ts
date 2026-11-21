@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { AI_CREW_URL } from '../../constants.js';
+import { AGENT_API_URL } from '../../constants.js';
 
 /**
- * 模型配置代理 — 转发到 pms-ai-crew 的 /api/model/* 端点
+ * 模型配置代理 — 转发到 pms-agent 的 /model/* 端点
  * 支持运行时热切换 LLM 模型（DeepSeek ↔ 千问等）
  */
 
@@ -11,7 +11,7 @@ const modelConfig = new Hono();
 // GET / — 查询当前模型和可用预设
 modelConfig.get('/', async (c) => {
   try {
-    const res = await fetch(`${AI_CREW_URL}/model`, {
+    const res = await fetch(`${AGENT_API_URL}/model`, {
       headers: { 'Content-Type': 'application/json' },
     });
     if (!res.ok) throw new Error(`AI 服务错误: ${res.status}`);
@@ -25,7 +25,7 @@ modelConfig.get('/', async (c) => {
 modelConfig.post('/switch', async (c) => {
   try {
     const body = await c.req.json();
-    const res = await fetch(`${AI_CREW_URL}/model/switch`, {
+    const res = await fetch(`${AGENT_API_URL}/model/switch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

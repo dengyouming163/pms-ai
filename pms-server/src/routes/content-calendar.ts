@@ -70,7 +70,7 @@ route.post('/calendar/generate', async (c) => {
     dates.push(d.toISOString().split('T')[0]);
   }
 
-  // 通过 pms-ai-crew 的 content_planning_crew 生成
+  // 通过 pms-agent 的内容规划能力生成
   const aiHost = process.env.PMS_AI_HOST || 'localhost';
   const aiPort = process.env.PMS_AI_PORT || '8000';
 

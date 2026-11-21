@@ -2,7 +2,7 @@
 //
 // 谁调它：
 //   · pms-platform-server（BFF）—— 建行与读行（经 X-Internal-Service-Token 转发）；
-//   · pms-ai-crew —— **只调 PATCH**，每完成一节回写一次（它不碰数据库）。
+//   · pms-agent —— **只调 PATCH**，每完成一节回写一次（它不碰数据库）。
 // 鉴权与本目录其它 admin 端点逐字同款：X-Internal-Service-Token === INTERNAL_SERVICE_TOKEN。
 //
 // 判定逻辑（看门狗 / 并发保护 / 逐节状态）**不在这里**，在 services/wenlv-research.ts。

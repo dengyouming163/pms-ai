@@ -324,11 +324,11 @@ app.route('/api/admin/wenlv-asset-gen', wenlvAssetGenRoute);
 // 文旅设计系统 admin（创作台代理读写设计模板/资产；内部 token 守卫见 routes/admin/wenlv-design.ts）
 app.route('/api/admin/wenlv-design', wenlvDesignRoute);
 
-// 场地网络调研（采风前 AI 调研）：BFF 建行/读行；ai-crew 只调 PATCH 逐节回写。
+// 场地网络调研（采风前 AI 调研）：BFF 建行/读行；pms-agent 只调 PATCH 逐节回写。
 // ⚠️ 独立挂载点是刻意的（**不是** /api/admin/wenlv/*）—— 它有自己的路由文件与守卫实例。
 app.route('/api/admin/wenlv-research', wenlvResearchAdminRoute);
 
-// AI 协作 DIY 会话 / 七步向导落盘（0079）：pms-ai-crew 与 BFF 经内部 token 调用；
+// AI 协作 DIY 会话 / 七步向导落盘（0079）：pms-agent 与 BFF 经内部 token 调用；
 // 草案只存 ai_sessions，POST .../adopt 事务才落 room/chapters/scenes/flows/npcs。
 app.route('/api/admin/wenlv-ai-sessions', wenlvAiSessionsRoute);
 
@@ -656,7 +656,7 @@ app.doc('/api/doc', {
   info: {
     title: '酒店PMS管理后台 API',
     version: '1.0.0',
-    description: '酒店PMS商家管理后台 OpenAPI 契约文档 - 前后端分仓架构的接口契约层。AI 助手能力由 pms-ai-crew 服务提供（/api/ai/chat、/api/video-script、/api/model 等）',
+    description: '酒店PMS商家管理后台 OpenAPI 契约文档 - 前后端分仓架构的接口契约层。AI 助手能力由 pms-agent 服务提供（/api/ai/chat、/api/video-script、/api/model 等）',
   },
   servers: [
     { url: 'http://localhost:9090', description: '开发环境' },

@@ -182,7 +182,7 @@ export const productHeadSchema = z.object({
   // 合法态，「空串 ⇒ 归 NULL = 解绑」在那里仍是正确答法。别为了「风格统一」把两者改齐。
   venueId: z.string().max(50).transform((v) => v.trim())
     .refine((v) => v.length > 0, { message: '必须选择场地' }),
-  // AI 出稿输入快照（S2）。只由 pms-ai-crew 落库时写一次，创作台表单不编辑它。
+  // AI 出稿输入快照（S2）。只由 pms-agent 落库时写一次，创作台表单不编辑它。
   // ⚠️ 语义自 2026-09-24 起是「**本次选中的子集**」，不再是「该场地全量」——
   //    一个 12 点位的场地里只有 3 个点位的快照是**正常的**，不是 bug。
   // 不设 .default()：PATCH 的 .partial() 才不会给它注入默认值把既有快照抹掉。

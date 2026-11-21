@@ -1,4 +1,4 @@
-import { AI_CREW_URL } from '../constants.js';
+import { AGENT_API_URL } from '../constants.js';
 
 interface ChatRequest {
   message: string;
@@ -8,12 +8,12 @@ interface ChatRequest {
 }
 
 /**
- * 向 pms-ai-crew 发送对话请求，返回 SSE ReadableStream
+ * 向 pms-agent 发送对话请求，返回 SSE ReadableStream
  */
 export async function aiChatStream(req: ChatRequest): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
-  const res = await fetch(`${AI_CREW_URL}/chat`, {
+  const res = await fetch(`${AGENT_API_URL}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8',

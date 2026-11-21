@@ -3,7 +3,7 @@ import { eq, desc, or } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { pmsBuiVideoTasks, pmsBuiCreationRecords, pmsBuiBatchJobs, pmsBuiImsTemplates } from '../db/schema/promotion.js';
 import { submitFastCut, getMediaJobStatus, submitBatchJob, getBatchJobStatus, submitFastCutV2, submitSmartMix, submitSubtitleOverlay } from '../services/aliyun/ims.js';
-import { AI_CREW_URL, INTERNAL_SERVICE_TOKEN } from '../constants.js';
+import { AGENT_API_URL, INTERNAL_SERVICE_TOKEN } from '../constants.js';
 import { submitVideoRetalkDashScope, getVideoRetalkDashScope, synthesizeSpeech } from '../services/aliyun/voice.js';
 import { uploadToOSS } from '../services/aliyun/oss.js';
 import { buildBgmUrlOrNull } from '../services/bgm-library.js';
@@ -158,7 +158,7 @@ route.post('/optimize-script', async (c) => {
 原文：
 ${script}`;
 
-    const res = await fetch(`${AI_CREW_URL}/chat`, {
+    const res = await fetch(`${AGENT_API_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -530,7 +530,7 @@ route.post('/batch-optimize', async (c) => {
     const hasVideo = mediaCounts.some(m => m.hasVideo);
     const suggestion = `${totalMedia}个素材${hasVideo ? '（含视频）' : '（纯图片）'}，口播约${script.length}字。`;
 
-    const res = await fetch(`${AI_CREW_URL}/chat`, {
+    const res = await fetch(`${AGENT_API_URL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Internal-Service-Token': INTERNAL_SERVICE_TOKEN || '' },
       body: JSON.stringify({
@@ -795,7 +795,7 @@ route.post('/template-fill', async (c) => {
     const mediaSlots = Object.keys(clipsParam).filter(k => k.startsWith('Media')).sort();
     const plainText = script.replace(/<[^>]+>/g, '').trim();
 
-    // 3. AI 内容重构 — 调用 pms-ai-crew 智能生成各槽位文案
+    // 3. AI 内容重构 — 调用 pms-agent 智能生成各槽位文案
     let filled: Record<string, string> = {};
     try {
       const aiPrompt = `你是短视频模板内容重构专家。模板「${templateName}」有 ${textSlots.length} 个文字位（${textSlots.join('、')}）。
@@ -811,7 +811,7 @@ ${plainText}
 4. 所有文字位数量固定为 ${textSlots.length} 个，必须全部填满，每个 15-50 字为宜
 5. 只输出 JSON 对象，格式：{"Text0":"...","Text1":"...","Text2":"..."}`;
 
-      const aiRes = await fetch(`${AI_CREW_URL}/chat`, {
+      const aiRes = await fetch(`${AGENT_API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Internal-Service-Token': INTERNAL_SERVICE_TOKEN || '' },
         body: JSON.stringify({ message: aiPrompt, history: [] }),

@@ -1,7 +1,7 @@
 /**
  * 短视频脚本生产 — 接口封装
  * 全部走 @/api/request（自动注入 token + X-Store-Id，BASE_URL 指向生产网关 20002）。
- * pms-server BFF（/api/video-script/*）转发到 pms-ai-crew（生产内网 :8000；本地 dev 为 :9091）。
+ * pms-server BFF（/api/video-script/*）转发到 pms-agent（生产内网 :8000；本地 dev 为 :8000）。
  */
 import { get, post } from '../request'
 import type {

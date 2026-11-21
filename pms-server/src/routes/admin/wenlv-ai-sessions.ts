@@ -1,7 +1,7 @@
 // AI 协作 DIY 会话 / 七步向导落盘 admin API（0079）。
 //
 // 谁调它：
-//   · pms-ai-crew（wenlv_diy_crew）—— 经 X-Internal-Service-Token 读写会话、采纳落盘、读步①锚定；
+//   · pms-agent —— 经 X-Internal-Service-Token 读写会话、采纳落盘、读步①锚定；
 //   · pms-platform-server（BFF）—— 验签 JWT 后用同一内部 token 转发浏览器请求。
 // 鉴权与本目录其它 admin 端点逐字同款：X-Internal-Service-Token === INTERNAL_SERVICE_TOKEN。
 //

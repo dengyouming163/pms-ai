@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { getMiniUser } from '../../middleware/mini-auth.js';
-import { AI_CREW_URL, INTERNAL_SERVICE_TOKEN } from '../../constants.js';
+import { AGENT_API_URL, INTERNAL_SERVICE_TOKEN } from '../../constants.js';
 
 const chat = new Hono();
 
@@ -12,7 +12,7 @@ chat.post('/', async (c) => {
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
-    const res = await fetch(`${AI_CREW_URL}/chat`, {
+    const res = await fetch(`${AGENT_API_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',

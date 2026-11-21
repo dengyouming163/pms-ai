@@ -1,5 +1,5 @@
 // 剧本交付的度量口径（纯函数，无 DB）。
-// **刻意不建状态机**：AI 生成已有 CREATED→DRAFTING→DRAFT_READY/FAILED（pms-ai-crew 拥有），
+// **刻意不建状态机**：AI 生成已有 CREATED→DRAFTING→DRAFT_READY/FAILED（pms-agent 拥有），
 // 再建一套「生成中」必然漂移。这里只从时间戳推导阶段，实时进度仍去查 AI run。
 
 export type DeliveryStage = 'not_started' | 'generating' | 'ready' | 'live';

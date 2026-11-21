@@ -70,7 +70,7 @@ function str(v: unknown): string | undefined {
 /**
  * 容错解析基线 JSON。
  *
- * 与 pms-ai-crew 的 LenientModel 同路数：先剥 markdown 围栏再 parse。
+ * 与 pms-agent 的 LenientModel 同路数：先剥 markdown 围栏再 parse。
  * **解析失败必须抛错，绝不返回空对象** —— 空基线等于放弃防漂移，
  * 出一批风格漂移的图比不出更糟（spec §8）。
  */
@@ -89,7 +89,7 @@ export function parseStyleBible(raw: string): WenlvStyleBible {
     obj = JSON.parse(stripped);
   } catch {
     // 兜底：LLM 偶尔在 JSON 前加一句寒暄（「好的，这是规范：」）。取最外层花括号之间的内容。
-    // **只做这一种修补** —— 更激进的修复会掩盖真实的结构错误（pms-ai-crew 的教训）。
+    // **只做这一种修补** —— 更激进的修复会掩盖真实的结构错误（pms-agent 的教训）。
     const open = stripped.indexOf('{');
     const close = stripped.lastIndexOf('}');
     if (open >= 0 && close > open) {

@@ -1,5 +1,5 @@
 /**
- * 短视频脚本生产 — 前端类型契约（对齐 pms-ai-crew /api/video-script 接口返回）
+ * 短视频脚本生产 — 前端类型契约（对齐 pms-agent /video-script 接口返回）
  * 注意：后端产出为 LLM 生成的嵌套 JSON，结构偶有抖动，凡不直接渲染的嵌套对象
  * 一律用 Record<string, any> 兜底，仅对「需要渲染」的字段做强类型。
  */

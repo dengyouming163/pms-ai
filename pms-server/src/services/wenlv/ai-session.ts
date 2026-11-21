@@ -1,7 +1,7 @@
 // AI 协作 DIY 会话 service（0079 / pms_bui_wenlv_ai_sessions）。
 //
 // 边界：
-//   · pms-ai-crew 不直连 DB，经 admin/wenlv-ai-sessions 路由（X-Internal-Service-Token）调本 service。
+//   · pms-agent 不直连 DB，经 admin/wenlv-ai-sessions 路由（X-Internal-Service-Token）调本 service。
 //   · 七步向导「AI 提案 / 用户决策」：草案只写 ai_sessions.draftSnapshots；**仅 adoptXxx 落盘事务**
 //     才写 script_rooms/chapters/scenes/flows/npcs，拒绝/换版不动四表（FR-10）。
 //   · 世界观落 script_rooms.config.worldview；角色落 npcs(productId=room.contentId)；骨架落 chapters；

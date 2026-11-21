@@ -299,7 +299,7 @@ export type WenlvBinaryNodeType = 'scene' | 'npc';
 export type WenlvSceneType = 'narrative' | 'npc' | 'puzzle' | 'atom' | 'ending';
 
 // AI 协作 DIY 会话（迁移 0079 / pms_bui_wenlv_ai_sessions）。
-// stage = 向导七步；pms-ai-crew 经 HTTP（内部 token）读写，不直连数据库。
+// stage = 向导七步；pms-agent 经 HTTP（内部 token）读写，不直连数据库。
 export type WenlvAiStage =
   | 'intent' | 'worldview' | 'characters' | 'skeleton' | 'scenes' | 'puzzles' | 'publish';
 export type WenlvAiSessionStatus = 'active' | 'paused' | 'completed' | 'abandoned';
@@ -1432,7 +1432,7 @@ export const pmsBuiWenlvFlows = pgTable('pms_bui_wenlv_flows', {
   idxTo: index('idx_wenlv_flows_to').on(t.toSceneId),
 }));
 
-// P4 AI 协作 DIY 会话状态（迁移 0079）。pms-ai-crew 经 HTTP + X-Internal-Service-Token 读写。
+// P4 AI 协作 DIY 会话状态（迁移 0079）。pms-agent 经 HTTP + X-Internal-Service-Token 读写。
 export const pmsBuiWenlvAiSessions = pgTable('pms_bui_wenlv_ai_sessions', {
   id: varchar('id', { length: 50 }).primaryKey(),
   scriptRoomId: varchar('script_room_id', { length: 50 }).notNull(),
