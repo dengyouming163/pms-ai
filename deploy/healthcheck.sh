@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
 # 本地一键启动健康检查：依次等待 pms-server / pms-agent / pms-web。
 # 每个服务最多轮询 60 秒（间隔 2 秒）；任一失败则打印该容器最近 50 行日志并退出 1。
+# pms-agent 尚未实现，容器不存在时跳过。
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
+WEB_PORT="${WEB_PORT:-3000}"
+
 check() {
   local service="$1"
   local url="$2"
-  local i
+  local expect="${3:-}"
+  local i body
   for i in $(seq 1 30); do
-    if curl -fsS -o /dev/null --max-time 5 "${url}"; then
-      echo "[ok] ${service} -> ${url}"
-      return 0
+    if body="$(curl -fsS --max-time 5 "${url}" 2>/dev/null)"; then
+      if [ -z "${expect}" ] || printf '%s' "${body}" | grep -qF "${expect}"; then
+        echo "[ok] ${service} -> ${url}"
+        return 0
+      fi
     fi
     sleep 2
   done
@@ -22,9 +28,14 @@ check() {
   return 1
 }
 
-check pms-server http://localhost:9090/health || exit 1
-# Task 7 之前 pms-agent 尚未实现，此处失败属预期
-check pms-agent http://localhost:8000/health || exit 1
-check pms-web http://localhost:3000 || exit 1
+check pms-server http://localhost:9090/health '"status":"ok"' || exit 1
+
+if [ -n "$(docker compose ps -q pms-agent 2>/dev/null)" ]; then
+  check pms-agent http://localhost:8000/health || exit 1
+else
+  echo "[skip] pms-agent 未启用（M1 后续任务实现）"
+fi
+
+check pms-web "http://localhost:${WEB_PORT}" || exit 1
 
 echo "all services healthy"

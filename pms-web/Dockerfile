@@ -20,6 +20,11 @@ COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
+
+# NEXT_PUBLIC_* 在 next build 时内联（Task 10 的 Agent 控制台使用）
+ARG NEXT_PUBLIC_AGENT_BASE
+ENV NEXT_PUBLIC_AGENT_BASE=${NEXT_PUBLIC_AGENT_BASE}
+
 RUN pnpm build
 
 # ---- 运行阶段 ----
@@ -31,11 +36,14 @@ RUN apk add --no-cache libc6-compat
 ENV NODE_ENV=production
 ENV PORT=5000
 
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
+# Next.js 运行期可能写 .next/cache：以 --chown 赋给非 root 用户（node_modules 保持只读）
+COPY --chown=node:node --from=builder /app/.next ./.next
+COPY --chown=node:node --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/next.config.ts ./next.config.ts
+
+USER node
 
 EXPOSE 5000
 CMD ["npx", "next", "start", "--port", "5000"]

@@ -180,7 +180,11 @@ services:
     restart: unless-stopped
 
   pms-web:
-    build: ./pms-web
+    build:
+      context: ./pms-web
+      args:
+        PMS_SERVER_URL: http://pms-server:9090
+        NEXT_PUBLIC_AGENT_BASE: http://localhost:8000
     ports:
       - "127.0.0.1:${WEB_PORT:-3000}:5000"
     depends_on:
