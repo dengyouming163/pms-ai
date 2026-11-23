@@ -1,8 +1,8 @@
 {
   "suite": "ota",
-  "generated_at": "2026-11-23T16:29:13",
+  "generated_at": "2026-11-23T17:25:09",
   "cases_sha256": "6e1177ffde34d641a27c5e11ef65a029fbe6764f88245dd7df0d8e6d5791da44",
-  "fixtures_sha256": "20eb3c347ee2320b759f596c1b4aab9d89ef7f4753c27d93f0c1e247a3c8e0ca",
+  "fixtures_sha256": "c80b8a51340e083c4f509d1433424c2793a45e1bf21710eaf2a1ec5894c1f208",
   "metrics": {
     "routing_accuracy": 1.0,
     "tool_f1": 1.0,
@@ -11,7 +11,7 @@
     "cost_cny": 0.0,
     "block_rate": 1.0,
     "approval_accuracy": 1.0,
-    "p95_latency_ms": 5.8776999976544175
+    "p95_latency_ms": 8.254199998191325
   },
   "results": [
     {
@@ -52,7 +52,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 5.8776999976544175,
+      "latency_ms": 8.254199998191325,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -92,7 +92,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 3.1208000000333413,
+      "latency_ms": 3.0578000005334616,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -132,7 +132,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 3.442400000494672,
+      "latency_ms": 3.3229999971808866,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -172,7 +172,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.7415999975346494,
+      "latency_ms": 2.592900000308873,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -212,7 +212,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.8481999979703687,
+      "latency_ms": 3.0126999990898184,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -252,7 +252,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.5572000013198704,
+      "latency_ms": 2.974200000608107,
       "success": true,
       "error": null,
       "has_forbid": false
