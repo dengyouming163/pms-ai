@@ -29,13 +29,7 @@ check() {
 }
 
 check pms-server http://localhost:9090/health '"status":"ok"' || exit 1
-
-if [ -n "$(docker compose ps -q pms-agent 2>/dev/null)" ]; then
-  check pms-agent http://localhost:8000/health || exit 1
-else
-  echo "[skip] pms-agent 未启用（M1 后续任务实现）"
-fi
-
+check pms-agent http://localhost:8000/health '"ok":true' || exit 1
 check pms-web "http://localhost:${WEB_PORT}" || exit 1
 
 echo "all services healthy"
