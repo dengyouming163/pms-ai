@@ -22,6 +22,10 @@ dependencies = [
   "langgraph-checkpoint-postgres",
 ]
 
+[project.optional-dependencies]
+# `pip install -e ".[test]"` 安装测试依赖
+test = ["pytest", "pytest-asyncio"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]

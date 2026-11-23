@@ -172,6 +172,10 @@ services:
       - LLM_BASE_URL_DASHSCOPE=${LLM_BASE_URL_DASHSCOPE:-https://dashscope.aliyuncs.com/compatible-mode/v1}
       - LLM_MODEL_DASHSCOPE=${LLM_MODEL_DASHSCOPE:-qwen-max}
       - PMS_SERVER_URL=http://pms-server:9090
+      # 规范名（优先于 PMS_SERVER_URL）；config 两者都识别，显式传入避免回退默认
+      - PMS_SERVER_INTERNAL_URL=http://pms-server:9090
+      # Agent 检查点/事件库：用 compose 内服务名 postgres + 容器内端口 5432
+      - AGENT_DATABASE_URL=postgresql://pms:pms_local_dev@postgres:5432/pms_ai?options=-c%20search_path%3Dagent
       - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
       - REDIS_URL=redis://redis:6379
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}

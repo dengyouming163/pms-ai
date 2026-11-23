@@ -96,7 +96,100 @@ async def test_revenue_graph_produces_one_proposal_with_raise(tmp_path):
     assert proposals[0]["after"]["price"] > proposals[0]["before"]["price"]
     assert proposals[0]["tool_name"] == "price-adjust"
     # request_approval 占位不抛错，正常走到 END
-    assert "approvals" in final_state or final_state.get("approvals") is None or True
+    assert final_state.get("approvals") is None or final_state["approvals"] == []
+
+
+def _write_fixture(tmp_path, prompt: str, content: str, filename: str = "fixture.jsonl"):
+    """把给定 content 写到与 prompt hash 匹配的夹具文件，返回 ReplayProvider。"""
+    fixture_rec = {
+        "prompt_hash": prompt_hash(prompt),
+        "model": MODEL,
+        "content": content,
+        "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+    }
+    (tmp_path / filename).write_text(
+        json.dumps(fixture_rec, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    return ReplayProvider(fixtures_dir=tmp_path)
+
+
+class FakeToolsWithFailingOccupancy:
+    """occupancy 抛异常，其余正常：验证单工具失败不拖垮 revenue 主流程。"""
+
+    async def pricing_calendar(self, tenant, date=None, room_type_id=None):
+        return FAKE_PRICING
+
+    async def occupancy(self, tenant, date=None):
+        raise RuntimeError("模拟 occupancy 工具超时")
+
+    async def competitor_prices(self, tenant, room_type_id=None, date=None):
+        return FAKE_COMPETITOR
+
+    async def channel_performance(self, tenant, date_from=None, date_to=None):
+        return FAKE_CHANNEL
+
+
+async def test_revenue_graph_survives_single_tool_failure(tmp_path):
+    """工具失败路径：图不崩溃、跑完；evidence 含 4 条且失败那条带错误标识；proposals 仍产出。"""
+    tenant = {"merchant_id": "m1", "store_id": "s1"}
+    fake_tools = FakeToolsWithFailingOccupancy()
+
+    # 用与图内相同的 collect 拿真实 evidence（含失败条目），保证 prompt hash 对齐
+    collected = await collect({"tenant": tenant}, tools=fake_tools)
+    evidence = collected["evidence"]
+    assert len(evidence) == 4
+
+    prompt = build_analysis_prompt(evidence)
+    suggestion = {
+        "roomTypeId": "rt_001", "currentPrice": 300, "suggestedPrice": 360,
+        "reason": "竞品更高且入住数据缺失但仍有提价空间", "confidence": 0.6, "level": "raise",
+    }
+    provider = _write_fixture(tmp_path, prompt, json.dumps([suggestion], ensure_ascii=False),
+                              filename="revenue_fail.jsonl")
+    graph = build_graph(provider=provider, tools=fake_tools, model=MODEL)
+
+    final_state = await graph.ainvoke(
+        {"goal": "明天要不要涨价？", "tenant": tenant, "run_id": "run-fail"},
+        config={"configurable": {"thread_id": "thread-fail"}},
+    )
+
+    # 图正常跑完到 END
+    assert final_state["route"] == "revenue"
+    assert len(final_state["evidence"]) == 4
+    # 失败的 occupancy 证据带「失败」标识
+    occ = next(e for e in final_state["evidence"] if e["tool"] == "occupancy")
+    assert "失败" in occ["summary"]
+    assert occ["payload"] is None
+    assert occ["payload_ref"].endswith(":error")
+    # 主流程未中断：仍产出 proposal
+    assert len(final_state["proposals"]) == 1
+    assert final_state["proposals"][0]["after"]["price"] > final_state["proposals"][0]["before"]["price"]
+
+
+async def test_analyze_handles_invalid_model_output(tmp_path):
+    """模型输出解析失败：不抛异常终止图，analysis 为空且 evidence 记录解析错误。"""
+    tenant = {"merchant_id": "m1", "store_id": "s1"}
+    fake_tools = FakeTools()
+
+    collected = await collect({"tenant": tenant}, tools=fake_tools)
+    prompt = build_analysis_prompt(collected["evidence"])
+    # 故意写一段无法解析为 JSON 的 content
+    provider = _write_fixture(tmp_path, prompt, "这不是合法的 JSON", filename="bad_content.jsonl")
+    graph = build_graph(provider=provider, tools=fake_tools, model=MODEL)
+
+    final_state = await graph.ainvoke(
+        {"goal": "明天要不要涨价？", "tenant": tenant, "run_id": "run-bad"},
+        config={"configurable": {"thread_id": "thread-bad"}},
+    )
+
+    # 图不崩溃
+    assert final_state["route"] == "revenue"
+    # 无有效建议 → 无 proposal
+    assert final_state["analysis"] == []
+    assert final_state["proposals"] == []
+    # evidence 中记了一条解析失败错误
+    parse_error = next((e for e in final_state["evidence"] if "解析失败" in e.get("summary", "")), None)
+    assert parse_error is not None
 
 
 def test_analysis_prompt_is_deterministic():

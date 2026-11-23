@@ -57,12 +57,30 @@ class HttpToolClient(ToolClient):
         return headers
 
     async def _get(self, path: str, params: dict[str, Any], tenant: dict) -> dict:
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.get(
-                f"{self.base_url}{path}", params=params, headers=self._headers(tenant)
-            )
-            resp.raise_for_status()
-            return resp.json()
+        # §7.3 工具失败重试 1 次：网络异常（TransportError/Timeout）与 HTTP 5xx
+        # 重试一次，仍失败则抛出（由 revenue.collect 的 gather 捕获后落 evidence，
+        # 避免单工具失败拖垮整条主流程）。4xx 属客户端错误，不重试直接抛出。
+        last_exc: Exception | None = None
+        for attempt in range(2):
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    resp = await client.get(
+                        f"{self.base_url}{path}", params=params,
+                        headers=self._headers(tenant),
+                    )
+                    resp.raise_for_status()
+                    return resp.json()
+            except httpx.HTTPStatusError as exc:
+                # 5xx 重试；4xx 等不重试
+                if exc.response.status_code >= 500:
+                    last_exc = exc
+                else:
+                    raise
+            except httpx.TransportError as exc:
+                # 连接/超时等网络异常重试
+                last_exc = exc
+            # 非最后一次才继续重试
+        raise last_exc  # type: ignore[misc]
 
     async def pricing_calendar(self, tenant, date=None, room_type_id=None):
         params: dict[str, Any] = {}

@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from pathlib import Path
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def prompt_hash(prompt: str) -> str:
@@ -46,19 +49,30 @@ class ReplayProvider:
         index: dict[tuple[str, str], dict] = {}
         if not self.fixtures_dir.exists():
             return index
+        skipped = 0
         # 按文件名排序，保证加载顺序确定（同名键后者覆盖，但正常不应重复）
         for path in sorted(self.fixtures_dir.glob("*.jsonl")):
             with path.open("r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
+                for lineno, raw in enumerate(f, start=1):
+                    line = raw.strip()
                     if not line:
                         continue
-                    rec = json.loads(line)
-                    key = (str(rec["model"]), str(rec["prompt_hash"]))
-                    index[key] = {
-                        "content": rec["content"],
-                        "usage": rec["usage"],
-                    }
+                    # 逐行容错：坏 JSON 或缺字段行记 warning 后跳过，
+                    # 不让单行损坏拖垮整个 provider 构造 / 启动
+                    try:
+                        rec = json.loads(line)
+                        key = (str(rec["model"]), str(rec["prompt_hash"]))
+                        index[key] = {
+                            "content": rec["content"],
+                            "usage": rec["usage"],
+                        }
+                    except (json.JSONDecodeError, TypeError, KeyError) as exc:
+                        skipped += 1
+                        logger.warning(
+                            "跳过损坏的回放夹具行 %s:%d：%r", path, lineno, exc
+                        )
+        if skipped:
+            logger.warning("回放夹具加载完成，共跳过 %d 条损坏/缺字段行", skipped)
         return index
 
     async def complete(self, model: str, prompt: str) -> dict:

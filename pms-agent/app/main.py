@@ -6,12 +6,14 @@ Task 7 仅提供 GET /health；runs / events / approve 端点在 Task 8/9 实现
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
+
 app = FastAPI(title="pms-agent", version="0.1.0")
 
-# 本地 web (pms-web :3000) 直连 SSE/REST 时需要跨域
+# 本地 web (pms-web :3000) 直连 SSE/REST 时需要跨域；来源由 CORS_ORIGINS 配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

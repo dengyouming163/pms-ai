@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
@@ -35,11 +36,21 @@ def synthesize_stub(state: AgentState) -> dict:
     return {"final": f"路由 {route} 的子图将在后续任务实现，当前为占位回复。"}
 
 
-def build_graph(provider=None, tools=None, model: str | None = None):
-    """工厂：构造并编译主图。测试注入假 provider/tools；生产缺省用回放 + HttpToolClient。"""
+def build_graph(provider=None, tools=None, model: str | None = None,
+                checkpointer: BaseCheckpointSaver | None = None,
+                callbacks: list | None = None):
+    """工厂：构造并编译主图。测试注入假 provider/tools；生产缺省用回放 + HttpToolClient。
+
+    - checkpointer：默认 MemorySaver（内存）；Task 9 可传入 PostgresSaver 替换。
+    - callbacks：默认空列表；Task 8 可传入 trace callback 等。
+      注意：langgraph 1.2.24 的 compile() 不接受 callbacks 参数，故通过 Runnable.with_config
+      挂载（ainvoke 时生效）。callbacks 为空时不包装，行为与原先完全一致。
+    """
     provider = provider or ReplayProvider()
     tools = tools or HttpToolClient()
     model = model or settings.llm_model
+    checkpointer = checkpointer or MemorySaver()
+    callbacks = callbacks or []
 
     workflow = StateGraph(AgentState)
 
@@ -74,8 +85,11 @@ def build_graph(provider=None, tools=None, model: str | None = None):
     # 其它路由经占位节点 → END
     workflow.add_edge("synthesize", END)
 
-    # 编译：带 MemorySaver checkpointer（Task 9 接 interrupt 所需）
-    graph = workflow.compile(checkpointer=MemorySaver())
+    # 编译：带 checkpointer（默认 MemorySaver；Task 9 接 interrupt 所需，可换 PostgresSaver）
+    graph = workflow.compile(checkpointer=checkpointer)
+    if callbacks:
+        # langgraph 1.2.24 compile() 不接受 callbacks，经 with_config 挂载到 ainvoke
+        graph = graph.with_config(callbacks=callbacks)
     return graph
 
 

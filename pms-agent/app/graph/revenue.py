@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from typing import Any
 
 from app.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 
 # ====== prompt 构建（纯函数，确定性） ======
@@ -102,11 +105,28 @@ def _parse_suggestions(content: str) -> list[dict[str, Any]]:
 
 
 async def analyze(state: AgentState, *, provider, model: str) -> dict:
-    """用 provider 生成结构化建议，写入 state['analysis']。"""
-    evidence = state.get("evidence") or []
+    """用 provider 生成结构化建议，写入 state['analysis']。
+
+    模型输出解析失败时不抛异常终止图：返回空建议列表，并在 evidence 追加一条
+    「模型输出解析失败」错误（回放模式 content 固定不会触发，LiveProvider 接入后需要）。
+    """
+    evidence = list(state.get("evidence") or [])
     prompt = build_analysis_prompt(evidence)
     resp = await provider.complete(model, prompt)
-    suggestions = _parse_suggestions(resp["content"])
+    try:
+        suggestions = _parse_suggestions(resp["content"])
+    except (json.JSONDecodeError, TypeError, KeyError, ValueError) as exc:
+        logger.warning("revenue analyze 模型输出解析失败：%r", exc)
+        return {
+            "analysis": [],
+            "evidence": evidence + [{
+                "source": "agent",
+                "tool": "analyze",
+                "summary": f"模型输出解析失败：{exc!r}",
+                "payload_ref": "analyze:parse-error",
+                "payload": None,
+            }],
+        }
     return {"analysis": suggestions}
 
 
@@ -118,7 +138,8 @@ def propose(state: AgentState) -> dict:
 
     proposals: list[dict[str, Any]] = []
     for i, s in enumerate(analysis):
-        room_type_id = s.get("roomTypeId")
+        # roomTypeId 缺失时兜底为 'unknown'，避免 idempotency_key 出现 'None' 字样
+        room_type_id = s.get("roomTypeId") or "unknown"
         current_price = s.get("currentPrice")
         suggested_price = s.get("suggestedPrice")
         proposals.append({
@@ -133,7 +154,8 @@ def propose(state: AgentState) -> dict:
             "after": {"price": suggested_price},
             "reason": s.get("reason"),
             "evidence_refs": list(evidence_refs),
-            "idempotency_key": f"{run_id}-{room_type_id}-price-adjust",
+            # 加索引 i 避免同房型多条建议冲突（如分时调价）
+            "idempotency_key": f"{run_id}-{room_type_id}-price-adjust-{i}",
         })
     return {"proposals": proposals}
 
