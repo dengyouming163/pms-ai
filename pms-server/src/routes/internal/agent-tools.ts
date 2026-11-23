@@ -48,6 +48,13 @@ function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** 两个 YYYY-MM-DD 相差的天数（to - from），按 UTC 日界计算 */
+function daysBetween(from: string, to: string): number {
+  return Math.round(
+    (new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime()) / 86400000,
+  );
+}
+
 /** 月份边界：start=YYYY-MM-01，end=当月最后一天，days=当月天数 */
 function monthBounds(month: string): { start: string; end: string; days: number } {
   const [year, mon] = month.split('-').map(Number);
@@ -106,12 +113,20 @@ export function buildPricingSnapshot(input: PricingSnapshotInput): PricingSnapsh
   return { date: input.date, total, available, occupied, booked, dirty, maintenance, occupancyRate };
 }
 
+/** 价格日历 roomTypes JSONB 单项的真实载荷（与 seed / pricing 写入口径一致：不含 basePrice，基准价另查房型表） */
+interface PricingCalendarItem {
+  roomTypeId?: string;
+  name?: string;
+  price?: number;
+  available?: number;
+}
+
 // ====== GET /pricing-calendar —— 当日各房型价格与基准价 ======
 tools.get('/pricing-calendar', async (c) => {
   const started = Date.now();
   try {
     const scope = getTenantScope(c);
-    const date = c.req.query('date') || todayStr();
+    const date = (c.req.query('date') || todayStr()).trim();
     if (!isValidDate(date)) {
       return c.json({ ok: false, error: 'date 格式非法，应为 YYYY-MM-DD', latency_ms: Date.now() - started }, 400);
     }
@@ -137,9 +152,10 @@ tools.get('/pricing-calendar', async (c) => {
     const byId = new Map(roomTypes.map((rt) => [rt.id, rt]));
     const byName = new Map(roomTypes.map((rt) => [rt.name, rt]));
 
-    const calendarItems = Array.isArray(calendar.roomTypes) ? (calendar.roomTypes as any[]) : [];
+    // row.roomTypes 是 jsonb → unknown，用一次安全断言收敛到具名接口，不使用 any
+    const calendarItems = (calendar.roomTypes ?? []) as PricingCalendarItem[];
     const items = calendarItems
-      .map((item: any) => {
+      .map((item) => {
         const rt = (item?.roomTypeId ? byId.get(String(item.roomTypeId)) : undefined)
           || (item?.name ? byName.get(String(item.name)) : undefined);
         return {
@@ -170,7 +186,7 @@ tools.get('/occupancy', async (c) => {
   const started = Date.now();
   try {
     const scope = getTenantScope(c);
-    const date = c.req.query('date') || todayStr();
+    const date = (c.req.query('date') || todayStr()).trim();
     if (!isValidDate(date)) {
       return c.json({ ok: false, error: 'date 格式非法，应为 YYYY-MM-DD', latency_ms: Date.now() - started }, 400);
     }
@@ -202,7 +218,7 @@ tools.get('/competitor-prices', async (c) => {
   const started = Date.now();
   try {
     const scope = getTenantScope(c);
-    const date = c.req.query('date') || todayStr();
+    const date = (c.req.query('date') || todayStr()).trim();
     if (!isValidDate(date)) {
       return c.json({ ok: false, error: 'date 格式非法，应为 YYYY-MM-DD', latency_ms: Date.now() - started }, 400);
     }
@@ -249,15 +265,19 @@ tools.get('/channel-performance', async (c) => {
   const started = Date.now();
   try {
     const scope = getTenantScope(c);
-    const to = c.req.query('to') || todayStr();
-    const from = c.req.query('from') || addDays(to, -29);
+    const to = (c.req.query('to') || todayStr()).trim();
+    const from = (c.req.query('from') || addDays(to, -29)).trim();
     if (!isValidDate(from) || !isValidDate(to)) {
       return c.json({ ok: false, error: 'from/to 格式非法，应为 YYYY-MM-DD', latency_ms: Date.now() - started }, 400);
     }
     if (from > to) {
       return c.json({ ok: false, error: 'from 不能晚于 to', latency_ms: Date.now() - started }, 400);
     }
+    if (daysBetween(from, to) > 90) {
+      return c.json({ ok: false, error: '日期区间不能超过 90 天', latency_ms: Date.now() - started }, 400);
+    }
 
+    // 聚合在内存完成（demo 数据量小），区间已限 90 天防止无界拉取；后续可下推 SQL 优化
     const orders = await db.select({
       channel: pmsBuiOrders.channel,
       status: pmsBuiOrders.status,
@@ -335,7 +355,7 @@ tools.get('/finance-summary', async (c) => {
   const started = Date.now();
   try {
     const scope = getTenantScope(c);
-    const month = c.req.query('month') || todayStr().slice(0, 7);
+    const month = (c.req.query('month') || todayStr().slice(0, 7)).trim();
     if (!MONTH_RE.test(month)) {
       return c.json({ ok: false, error: 'month 格式非法，应为 YYYY-MM', latency_ms: Date.now() - started }, 400);
     }

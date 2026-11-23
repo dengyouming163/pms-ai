@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPricingSnapshot } from './agent-tools';
+import { buildPricingSnapshot } from './agent-tools.js';
 
 describe('buildPricingSnapshot', () => {
   it('计算入住率与可售房数', () => {
