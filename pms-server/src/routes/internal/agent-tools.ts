@@ -15,7 +15,7 @@ import { getTenantScope, tenantWhere } from '../../utils/tenant.js';
 import { checkPriceAdjustment } from '../../services/price-guard.js';
 
 /**
- * Agent 工具端点（挂载于 /api/internal/agent-tools/*）：7 个只读 GET（含 guest 知识检索），
+ * Agent 工具端点（挂载于 /api/internal/agent-tools/*）：8 个只读 GET（含 guest 知识检索、OTA 渠道同步状态），
  * 加唯一经人审的写端点 POST /price-adjust（乐观并发 + 业务护栏）。
  *
  * 鉴权与脱敏由 index.ts 对 /api/internal/* 统一挂载的 internalAuthMiddleware +
@@ -201,6 +201,57 @@ export function searchKbEntries(entries: KbEntry[], tokens: string[], limit = 5)
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score);
   return scored.slice(0, limit).map((item) => item.entry);
+}
+
+// ====== 纯函数：渠道同步状态 ======
+
+/** 渠道同步原始行（pms_bui_channels 的只读投影） */
+export interface ChannelSyncRow {
+  channel: string;
+  status: string;
+  autoSync: boolean;
+  syncInterval: number;
+  lastSyncAt: string | null;
+}
+
+export interface ChannelSyncItem extends ChannelSyncRow {
+  overdue: boolean;
+  minutesSinceSync: number | null;
+}
+
+export interface ChannelSyncSummary {
+  items: ChannelSyncItem[];
+  overdueCount: number;
+  abnormalCount: number;
+}
+
+/** 健康状态：兼容 seed 的 connected 与历史数据的 active */
+const HEALTHY_CHANNEL_STATUSES = new Set(['connected', 'active']);
+
+/**
+ * 评估渠道同步状态（纯函数，不访问数据库）。
+ *
+ * 口径：
+ * - 开启自动同步（autoSync）且「从未同步」或「距上次同步超过 2 倍同步周期」→ overdue；
+ * - 关闭自动同步的渠道不参与超时判断（如直客渠道）；
+ * - status 不在 connected/active 内 → abnormalCount +1，与超时分开计数。
+ */
+export function evaluateChannelSync(rows: ChannelSyncRow[], nowMs: number): ChannelSyncSummary {
+  const items: ChannelSyncItem[] = rows.map((row) => {
+    const interval = toNumber(row.syncInterval);
+    const last = row.lastSyncAt ? new Date(row.lastSyncAt).getTime() : null;
+    const minutesSinceSync = last != null && Number.isFinite(last)
+      ? Math.max(0, Math.floor((nowMs - last) / 60000))
+      : null;
+    const overdue = Boolean(row.autoSync)
+      && (minutesSinceSync == null || (interval > 0 && minutesSinceSync > interval * 2));
+    return { ...row, overdue, minutesSinceSync };
+  });
+  return {
+    items,
+    overdueCount: items.filter((item) => item.overdue).length,
+    abnormalCount: items.filter((item) => !HEALTHY_CHANNEL_STATUSES.has(item.status)).length,
+  };
 }
 
 // ====== GET /pricing-calendar —— 当日各房型价格与基准价 ======
@@ -580,6 +631,39 @@ tools.get('/kb-search', async (c) => {
     });
   } catch (err) {
     console.error('[agent-tools] kb-search 失败:', err);
+    return c.json({ ok: false, error: '内部错误', latency_ms: Date.now() - started }, 500);
+  }
+});
+
+// ====== GET /channel-status —— 渠道同步状态（OTA 体检） ======
+tools.get('/channel-status', async (c) => {
+  const started = Date.now();
+  try {
+    const scope = getTenantScope(c);
+    const rows = await db.select({
+      name: pmsBuiChannels.name,
+      status: pmsBuiChannels.status,
+      autoSync: pmsBuiChannels.autoSync,
+      syncInterval: pmsBuiChannels.syncInterval,
+      lastSyncAt: pmsBuiChannels.lastSyncAt,
+    }).from(pmsBuiChannels)
+      .where(and(...tenantWhere(scope, pmsBuiChannels)))
+      .orderBy(desc(pmsBuiChannels.updatedAt));
+
+    const summary = evaluateChannelSync(
+      rows.map((row) => ({
+        channel: row.name,
+        status: row.status || 'unknown',
+        autoSync: row.autoSync !== false,
+        syncInterval: toNumber(row.syncInterval),
+        lastSyncAt: row.lastSyncAt ? new Date(row.lastSyncAt).toISOString() : null,
+      })),
+      Date.now(),
+    );
+
+    return c.json({ ok: true, data: summary, latency_ms: Date.now() - started });
+  } catch (err) {
+    console.error('[agent-tools] channel-status 失败:', err);
     return c.json({ ok: false, error: '内部错误', latency_ms: Date.now() - started }, 500);
   }
 });

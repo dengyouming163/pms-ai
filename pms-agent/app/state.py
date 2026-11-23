@@ -37,5 +37,7 @@ class AgentState(TypedDict, total=False):
     ops_report: list[dict[str, Any]]
     # 住中客服是否转人工（guest 子图写入：知识库未命中或检索失败为 True）
     guest_transfer: bool
+    # 渠道体检结构化条目：[{ priority, status, conclusion, evidence, action }]（ota 子图写入）
+    ota_report: list[dict[str, Any]]
     # 最终对用户的回复
     final: str | None

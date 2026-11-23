@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { buildPricingSnapshot, searchKbEntries } from './agent-tools.js';
+import {
+  buildPricingSnapshot,
+  evaluateChannelSync,
+  searchKbEntries,
+} from './agent-tools.js';
 
 describe('buildPricingSnapshot', () => {
   it('计算入住率与可售房数', () => {
@@ -58,5 +62,46 @@ describe('searchKbEntries', () => {
 
   it('结果超过 limit 时截断', () => {
     expect(searchKbEntries(entries, ['退房', '早餐'], 1)).toHaveLength(1);
+  });
+});
+
+describe('evaluateChannelSync', () => {
+  const NOW = Date.parse('2026-11-23T10:00:00+08:00');
+  const base = { channel: '携程', status: 'connected', autoSync: true, syncInterval: 30 };
+
+  it('最近一次同步在 2 倍周期内不算超时', () => {
+    const result = evaluateChannelSync(
+      [{ ...base, lastSyncAt: '2026-11-23T09:30:00+08:00' }],
+      NOW,
+    );
+    expect(result.items[0].overdue).toBe(false);
+    expect(result.overdueCount).toBe(0);
+  });
+
+  it('超过 2 倍同步周期未同步判为超时', () => {
+    const result = evaluateChannelSync(
+      [{ ...base, lastSyncAt: '2026-11-23T08:30:00+08:00' }],
+      NOW,
+    );
+    expect(result.items[0].overdue).toBe(true);
+    expect(result.overdueCount).toBe(1);
+  });
+
+  it('开启自动同步但从未同步过判为超时', () => {
+    const result = evaluateChannelSync([{ ...base, lastSyncAt: null }], NOW);
+    expect(result.items[0].overdue).toBe(true);
+  });
+
+  it('关闭自动同步不参与超时判断，但状态异常单独计数', () => {
+    const result = evaluateChannelSync(
+      [
+        { ...base, channel: '直客', autoSync: false, lastSyncAt: null },
+        { ...base, channel: '美团', status: 'error', lastSyncAt: '2026-11-23T09:50:00+08:00' },
+      ],
+      NOW,
+    );
+    expect(result.items[0].overdue).toBe(false);
+    expect(result.overdueCount).toBe(0);
+    expect(result.abnormalCount).toBe(1);
   });
 });

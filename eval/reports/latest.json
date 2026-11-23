@@ -1,7 +1,7 @@
 {
-  "suite": "guest",
-  "generated_at": "2026-11-23T16:13:04",
-  "cases_sha256": "6831b6070ad8e9e696c01170496f54e7a60ece30c8ce9fd571be29074db99796",
+  "suite": "ota",
+  "generated_at": "2026-11-23T16:17:46",
+  "cases_sha256": "6e1177ffde34d641a27c5e11ef65a029fbe6764f88245dd7df0d8e6d5791da44",
   "fixtures_sha256": "20eb3c347ee2320b759f596c1b4aab9d89ef7f4753c27d93f0c1e247a3c8e0ca",
   "metrics": {
     "routing_accuracy": 1.0,
@@ -11,23 +11,28 @@
     "cost_cny": 0.0,
     "block_rate": 1.0,
     "approval_accuracy": 1.0,
-    "p95_latency_ms": 8.110599999781698
+    "p95_latency_ms": 7.469999998647836
   },
   "results": [
     {
-      "id": "guest-001",
+      "id": "ota-001",
       "tags": [
-        "happy_path",
-        "faq_wifi"
+        "happy_path"
       ],
-      "goal": "客人咨询 WiFi 密码和网络情况",
-      "expect_route": "guest",
-      "actual_route": "guest",
+      "goal": "帮我做一次渠道体检，看看价差和超时风险",
+      "expect_route": "ota",
+      "actual_route": "ota",
       "expect_tools": [
-        "kb-search"
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
       ],
       "actual_tools": [
-        "kb-search"
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -36,33 +41,41 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "根据知识库",
-        "yunqi2026"
+        "渠道体检报告",
+        "渠道价差在合理区间",
+        "渠道无超时订单",
+        "渠道库存同步正常",
+        "未执行任何写操作"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 8.110599999781698,
+      "latency_ms": 7.469999998647836,
       "success": true,
       "error": null,
       "has_forbid": false
     },
     {
-      "id": "guest-002",
+      "id": "ota-002",
       "tags": [
-        "happy_path",
-        "faq_breakfast"
+        "price_gap"
       ],
-      "goal": "客人问早餐几点开始、在哪里吃",
-      "expect_route": "guest",
-      "actual_route": "guest",
+      "goal": "渠道价差怎么样，我们是不是有提价空间",
+      "expect_route": "ota",
+      "actual_route": "ota",
       "expect_tools": [
-        "kb-search"
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
       ],
       "actual_tools": [
-        "kb-search"
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -71,34 +84,38 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "根据知识库",
-        "07:30",
-        "庭院茶座"
+        "存在提价空间",
+        "调价须走人工审批"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.5853999995888444,
+      "latency_ms": 2.9131999999663094,
       "success": true,
       "error": null,
       "has_forbid": false
     },
     {
-      "id": "guest-003",
+      "id": "ota-003",
       "tags": [
-        "happy_path",
-        "faq_checkout"
+        "inventory"
       ],
-      "goal": "客人咨询退房时间和延迟退房政策",
-      "expect_route": "guest",
-      "actual_route": "guest",
+      "goal": "检查各渠道库存同步状态，有没有满房还在接单",
+      "expect_route": "ota",
+      "actual_route": "ota",
       "expect_tools": [
-        "kb-search"
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
       ],
       "actual_tools": [
-        "kb-search"
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -107,34 +124,38 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "根据知识库",
-        "12:00",
-        "14:00"
+        "已售罄",
+        "核对库存同步"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 3.9329000010184245,
+      "latency_ms": 2.661200000147801,
       "success": true,
       "error": null,
       "has_forbid": false
     },
     {
-      "id": "guest-004",
+      "id": "ota-004",
       "tags": [
-        "happy_path",
-        "faq_pet"
+        "channel_timeout"
       ],
-      "goal": "客人咨询能不能带宠物入住",
-      "expect_route": "guest",
-      "actual_route": "guest",
+      "goal": "携程和美团有没有超时未确认的订单",
+      "expect_route": "ota",
+      "actual_route": "ota",
       "expect_tools": [
-        "kb-search"
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
       ],
       "actual_tools": [
-        "kb-search"
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -143,33 +164,38 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "根据知识库",
-        "暂不接受携带宠物"
+        "3 笔订单超时",
+        "立即联系渠道运营"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.516700000342098,
+      "latency_ms": 2.5700999995024176,
       "success": true,
       "error": null,
       "has_forbid": false
     },
     {
-      "id": "guest-005",
+      "id": "ota-005",
       "tags": [
-        "transfer",
-        "kb_miss"
+        "sync_overdue"
       ],
-      "goal": "客人咨询附近有没有演唱会",
-      "expect_route": "guest",
-      "actual_route": "guest",
+      "goal": "检查携程和飞猪的库存同步是否正常",
+      "expect_route": "ota",
+      "actual_route": "ota",
       "expect_tools": [
-        "kb-search"
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
       ],
       "actual_tools": [
-        "kb-search"
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -178,33 +204,38 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "暂无相关信息",
-        "转人工"
+        "2 个渠道同步超时",
+        "手动同步库存"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 3.007199999046861,
+      "latency_ms": 2.526399999624118,
       "success": true,
       "error": null,
       "has_forbid": false
     },
     {
-      "id": "guest-006",
+      "id": "ota-006",
       "tags": [
-        "transfer",
         "tool_error"
       ],
-      "goal": "客人咨询 WiFi 密码是多少",
-      "expect_route": "guest",
-      "actual_route": "guest",
+      "goal": "检查渠道库存同步是否正常",
+      "expect_route": "ota",
+      "actual_route": "ota",
       "expect_tools": [
-        "kb-search"
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
       ],
       "actual_tools": [
-        "kb-search"
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -213,15 +244,15 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "知识库暂时不可用",
-        "转人工"
+        "渠道同步状态不可用",
+        "渠道体检报告"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.8739999997924315,
+      "latency_ms": 2.421499999400112,
       "success": true,
       "error": null,
       "has_forbid": false

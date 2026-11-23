@@ -117,6 +117,22 @@ DEFAULT_TOOL_DATA = {
             }],
         },
     },
+    # 默认渠道同步正常：无超时、无异常，避免污染非同步类用例
+    "channel-status": {
+        "ok": True,
+        "data": {
+            "overdueCount": 0,
+            "abnormalCount": 0,
+            "items": [
+                {"channel": "携程", "status": "connected", "autoSync": True,
+                 "syncInterval": 30, "lastSyncAt": "2026-11-23T09:30:00+08:00",
+                 "overdue": False, "minutesSinceSync": 30},
+                {"channel": "美团", "status": "connected", "autoSync": True,
+                 "syncInterval": 30, "lastSyncAt": "2026-11-23T09:45:00+08:00",
+                 "overdue": False, "minutesSinceSync": 15},
+            ],
+        },
+    },
 }
 
 
@@ -165,6 +181,9 @@ class CaseTools:
 
     async def kb_search(self, tenant, query):
         return self._hit("kb-search")
+
+    async def channel_status(self, tenant):
+        return self._hit("channel-status")
 
     async def price_adjust(self, tenant, proposal, approval_id=None):
         self.calls.append("price-adjust")

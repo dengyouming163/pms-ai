@@ -1,0 +1,271 @@
+{
+  "suite": "ota",
+  "generated_at": "2026-11-23T16:17:33",
+  "cases_sha256": "6e1177ffde34d641a27c5e11ef65a029fbe6764f88245dd7df0d8e6d5791da44",
+  "fixtures_sha256": "20eb3c347ee2320b759f596c1b4aab9d89ef7f4753c27d93f0c1e247a3c8e0ca",
+  "metrics": {
+    "routing_accuracy": 1.0,
+    "tool_f1": 1.0,
+    "task_success_rate": 1.0,
+    "avg_steps": 3.0,
+    "cost_cny": 0.0,
+    "block_rate": 1.0,
+    "approval_accuracy": 1.0,
+    "p95_latency_ms": 8.049899999605259
+  },
+  "results": [
+    {
+      "id": "ota-001",
+      "tags": [
+        "happy_path"
+      ],
+      "goal": "帮我做一次渠道体检，看看价差和超时风险",
+      "expect_route": "ota",
+      "actual_route": "ota",
+      "expect_tools": [
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "渠道体检报告",
+        "渠道价差在合理区间",
+        "渠道无超时订单",
+        "渠道库存同步正常",
+        "未执行任何写操作"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 8.049899999605259,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "ota-002",
+      "tags": [
+        "price_gap"
+      ],
+      "goal": "渠道价差怎么样，我们是不是有提价空间",
+      "expect_route": "ota",
+      "actual_route": "ota",
+      "expect_tools": [
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "存在提价空间",
+        "调价须走人工审批"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 3.393599999981234,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "ota-003",
+      "tags": [
+        "inventory"
+      ],
+      "goal": "检查各渠道库存同步状态，有没有满房还在接单",
+      "expect_route": "ota",
+      "actual_route": "ota",
+      "expect_tools": [
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "已售罄",
+        "核对库存同步"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 2.8875999996671453,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "ota-004",
+      "tags": [
+        "channel_timeout"
+      ],
+      "goal": "携程和美团有没有超时未确认的订单",
+      "expect_route": "ota",
+      "actual_route": "ota",
+      "expect_tools": [
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "3 笔订单超时",
+        "立即联系渠道运营"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 3.4838000010495307,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "ota-005",
+      "tags": [
+        "sync_overdue"
+      ],
+      "goal": "检查携程和飞猪的库存同步是否正常",
+      "expect_route": "ota",
+      "actual_route": "ota",
+      "expect_tools": [
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "2 个渠道同步超时",
+        "手动同步库存"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 2.836000001479988,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "ota-006",
+      "tags": [
+        "tool_error"
+      ],
+      "goal": "检查渠道库存同步是否正常",
+      "expect_route": "ota",
+      "actual_route": "ota",
+      "expect_tools": [
+        "competitor-prices",
+        "pricing-calendar",
+        "channel-performance",
+        "channel-status"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "channel-status",
+        "competitor-prices",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "渠道同步状态不可用",
+        "渠道体检报告"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 5.788300000858726,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    }
+  ],
+  "thresholds": {
+    "routing_accuracy": 0.95,
+    "tool_f1": 0.9,
+    "task_success_rate": 0.9,
+    "avg_steps": 8.0,
+    "cost_cny": 0.05,
+    "block_rate": 1.0,
+    "approval_accuracy": 1.0,
+    "p95_latency_ms": 45000.0
+  }
+}
