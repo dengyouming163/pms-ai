@@ -257,6 +257,58 @@ def test_analysis_prompt_ignores_volatile_fields():
     assert build_analysis_prompt(a) == build_analysis_prompt(b)
 
 
+def _channel_evidence(date_from="2026-10-25", date_to="2026-11-23", order_count=48):
+    """构造 channel-performance 证据：from/to 是默认最近 30 天时间窗，跨天会变。"""
+    return [{
+        "source": "pms-server",
+        "tool": "channel-performance",
+        "summary": f"订单 {order_count} 笔",
+        "payload_ref": "channel-performance:0",
+        "payload": {
+            "ok": True,
+            "data": {
+                "from": date_from,
+                "to": date_to,
+                "orderCount": order_count,
+                "revenue": 14400,
+                "items": [],
+            },
+        },
+    }]
+
+
+def _competitor_evidence(last_crawled_at="2026-11-23T10:00:00+08:00", price=410):
+    """构造 competitor-prices 证据：items[].lastCrawledAt 随每次爬取变化。"""
+    return [{
+        "source": "pms-server",
+        "tool": "competitor-prices",
+        "summary": "竞品均价 410（1 条）",
+        "payload_ref": "competitor-prices:0",
+        "payload": {
+            "ok": True,
+            "data": {
+                "avgPrice": price,
+                "count": 1,
+                "items": [{"hotelName": "竞品A", "price": price, "lastCrawledAt": last_crawled_at}],
+            },
+        },
+    }]
+
+
+def test_analysis_prompt_ignores_channel_performance_window():
+    """data.from / data.to（默认最近 30 天）变化不得影响 prompt。"""
+    a = _channel_evidence(date_from="2026-10-25", date_to="2026-11-23")
+    b = _channel_evidence(date_from="2026-10-26", date_to="2026-11-24")
+    assert build_analysis_prompt(a) == build_analysis_prompt(b)
+
+
+def test_analysis_prompt_ignores_competitor_last_crawled_at():
+    """items[].lastCrawledAt（新爬取时间）变化不得影响 prompt。"""
+    a = _competitor_evidence(last_crawled_at="2026-11-23T10:00:00+08:00")
+    b = _competitor_evidence(last_crawled_at="2026-11-24T08:30:00+08:00")
+    assert build_analysis_prompt(a) == build_analysis_prompt(b)
+
+
 def test_analysis_prompt_changes_with_business_data():
     """业务数据（价格/入住率）变化必须反映到 prompt，避免过度归一化丢掉有效信息。"""
     a = _evidence_with(price=300, occupancy_rate=92)

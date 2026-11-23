@@ -36,6 +36,10 @@ _VOLATILE_KEYS = {
     "date",
     "created_at", "createdat", "updated_at", "updatedat",
     "timestamp", "trace_id",
+    # channel-performance 默认「最近 30 天」时间窗，跨天即变
+    "from", "to",
+    # competitor-prices 的爬取时间，每次新爬取即变
+    "lastcrawledat", "last_crawled_at",
 }
 
 
