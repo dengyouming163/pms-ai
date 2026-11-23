@@ -1,8 +1,32 @@
+# 统一换行：源码与脚本一律 LF
 *.sh text eol=lf
 *.sql text eol=lf
 *.ts text eol=lf
 *.tsx text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
 *.py text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
 Dockerfile text eol=lf
+
+# 文档与数据：保留仓库统一换行
+*.md text eol=lf
+*.jsonl text eol=lf
+*.json text eol=lf
+
+# 依赖锁文件：避免 diff 噪声，保证合并时按语义处理
+pnpm-lock.yaml -diff merge=ours
+requirements.lock -diff
+
+# 二进制资源：不做文本转换与行级 diff
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.woff binary
+*.woff2 binary

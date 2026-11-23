@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞
+    url: https://github.com/dengyouming163/pms-ai/security/advisories/new
+    about: 请勿公开提交安全问题，使用 GitHub Security Advisory 私下报告。
+  - name: 使用与部署问题
+    url: https://github.com/dengyouming163/pms-ai/blob/master/docs/DEPLOYMENT.md
+    about: 启动、端口、环境变量相关问题请先查阅部署手册。

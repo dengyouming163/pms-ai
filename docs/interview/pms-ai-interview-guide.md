@@ -1,7 +1,7 @@
 # 宿智 Agent · 面试题库与知识手册
 
 > 适用项目：`pms-ai`（PMS 多智能体协作平台）
-> 版本：v1.0（对应设计规格 `docs/superpowers/specs/2026-11-21-pms-ai-design.md`）
+> 版本：v1.0（对应设计规格 `docs/design/architecture-spec.md`）
 > 使用说明：本文以设计规格为准。代码实现推进后，请用实际数值校准「12 步 / 8 万 token / 90 秒 / ±30%」等参数，面试时只讲你能在代码里指给面试官看的东西。
 
 ---

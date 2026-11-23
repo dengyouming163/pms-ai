@@ -1,0 +1,99 @@
+name: Bug 报告
+description: 报告可复现的缺陷，帮助我们一起定位问题
+title: '[Bug] '
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请先搜索已有 Issue，避免重复。安全漏洞请不要在此提交，见 [安全策略](../blob/master/SECURITY.md)。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题描述
+      description: 一句话说明发生了什么，以及影响范围。
+      placeholder: 例如：批准调价后价格未落库，时间轴显示 guard_rejected。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请给出最小、可重复的步骤。
+      placeholder: |
+        1. docker compose up -d --build
+        2. 打开 /agent-console，输入「明天青岩店要不要涨价？」
+        3. 点击开始运行并批准提案
+        4. 观察……
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      placeholder: 价格应更新为建议值，运行状态为 succeeded。
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 包括错误提示、退出码、HTTP 状态等。
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: 受影响组件
+      multiple: true
+      options:
+        - pms-agent
+        - pms-server
+        - pms-web
+        - pms-mobile
+        - eval
+        - deploy
+        - docs
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本或提交
+      placeholder: 例如 master@74da3f7
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境
+      description: 操作系统、Docker 版本、Node/Python 版本、LLM_PROVIDER。
+      placeholder: Windows 11 / Docker 27 / Node 22 / Python 3.12 / replay
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志与截图
+      description: 请粘贴关键日志（注意脱敏，不要包含密钥或真实用户数据）。
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过已有 Issue，确认不是重复问题
+          required: true
+        - label: 我已移除日志中的密钥与个人敏感信息
+          required: true

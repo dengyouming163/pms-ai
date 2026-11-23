@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  agent:
+    name: Agent · pytest + eval
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pms-agent/requirements.lock
+      - name: 安装依赖
+        run: pip install -r pms-agent/requirements.lock
+      - name: 单元测试
+        working-directory: pms-agent
+        run: python -m pytest -q
+      - name: 评测 · revenue
+        run: python -m eval.run_eval --suite revenue
+      - name: 评测 · ops
+        run: python -m eval.run_eval --suite ops
+      - name: 评测 · guest
+        run: python -m eval.run_eval --suite guest
+      - name: 评测 · ota
+        run: python -m eval.run_eval --suite ota
+
+  server:
+    name: Server · ts-check + vitest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pms-server/pnpm-lock.yaml
+      - name: 安装依赖
+        working-directory: pms-server
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: 类型检查
+        working-directory: pms-server
+        run: pnpm run ts-check
+      - name: 单元测试
+        working-directory: pms-server
+        run: pnpm vitest run
+
+  web:
+    name: Web · ts-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pms-web/pnpm-lock.yaml
+      - name: 安装依赖
+        working-directory: pms-web
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: 类型检查
+        working-directory: pms-web
+        run: pnpm run ts-check

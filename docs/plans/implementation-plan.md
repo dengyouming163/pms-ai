@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript 5 / Hono 4 / Drizzle ORM / PostgreSQL 16 / Next.js 16 / Python 3.12 / FastAPI / LangGraph / langchain-openai / pytest / Vitest / Docker Compose
 
-**参考规格:** `docs/superpowers/specs/2026-11-21-pms-ai-design.md`
+**参考规格:** `docs/design/architecture-spec.md`
 
 **执行约定:**
 - 所有命令在 `D:\wwwroot\projectwork\projects\pms-ai` 下执行。
