@@ -162,6 +162,24 @@ async def test_conflict_marks_conflict_without_retry(tmp_path):
     assert final_state["execution_status"] == "conflict"
 
 
+async def test_guard_rejected_is_recorded(tmp_path):
+    """批准但执行层被护栏拒绝（server 422）：如实记为 guard_rejected 且不重试。"""
+    fake_tools = CountingFakeTools(
+        price_adjust_result={"ok": False, "error": "guard_rejected", "guard_rejected": True},
+    )
+    graph, config, state = await _build_interruptible_graph(
+        tmp_path, fake_tools, "thread-guard",
+    )
+
+    await graph.ainvoke(state, config=config)
+    final_state = await graph.ainvoke(
+        Command(resume={"decision": "approve", "reason": ""}),
+        config=config,
+    )
+    assert fake_tools.price_adjust_calls == 1
+    assert final_state["execution_status"] == "guard_rejected"
+
+
 async def test_no_proposal_does_not_interrupt(tmp_path):
     """无提案（模型输出解析失败）：不 interrupt，单次 ainvoke 直接到 END。"""
     fake_tools = CountingFakeTools()

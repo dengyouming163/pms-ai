@@ -171,13 +171,41 @@ async def _execute_run(run_id: str, goal: str, tenant: dict, trace_id: str | Non
             )
 
 
+# ---- 审批单执行结果回写（spec §8：审批记录需含执行结果） ----
+
+def _write_approval_result(conn, run_id: str, proposal_id: str, result: dict) -> None:
+    """把执行结果回写到 agent_approvals（按 run_id + proposal_id 定位审批单）。"""
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE agent_approvals SET result = %s, executed_at = now()"
+            " WHERE run_id = %s AND proposal_id = %s",
+            (Jsonb(result), run_id, proposal_id),
+        )
+
+
+def _write_approval_result_best_effort(run_id: str, proposal_id: str, result: dict) -> None:
+    """异常分支用：单独连接尽力回写，失败只记日志，绝不掩盖原始错误。"""
+    if not proposal_id:
+        return
+    try:
+        with get_conn() as conn:
+            _write_approval_result(conn, run_id, proposal_id, result)
+    except Exception:
+        logger.warning(
+            "审批单执行结果回写失败 run_id=%s proposal_id=%s", run_id, proposal_id,
+            exc_info=True,
+        )
+
+
 async def resume_run(run_id: str, resume_payload: dict, trace_id: str | None) -> None:
     """恢复挂起的图（人审决策后由 approvals 端点后台调用），并终结 run。
 
     - Command(resume=resume_payload) 让挂起的 request_approval 节点重新执行、interrupt 返回该 payload。
-    - result["execution_status"]：conflict/rejected/failed 对应终态，其余视为 succeeded。
+    - result["execution_status"]：conflict/rejected/guard_rejected/failed 对应非成功态，其余视为 succeeded。
     - 事件落 executions 与 final；异常/超时按 _execute_run 风格置 failed。
+    - 执行结果同时回写审批单（agent_approvals.result / executed_at）。
     """
+    proposal_id = resume_payload.get("proposal_id") or ""
     try:
         async with get_checkpointer() as checkpointer:
             handler = TraceCallbackHandler(run_id, trace_id=trace_id)
@@ -190,7 +218,7 @@ async def resume_run(run_id: str, resume_payload: dict, trace_id: str | None) ->
                 timeout=RUN_TIMEOUT_SECONDS,
             )
             exec_status = result.get("execution_status")
-            if exec_status not in ("conflict", "rejected", "failed"):
+            if exec_status not in ("conflict", "rejected", "guard_rejected", "failed"):
                 exec_status = "succeeded"
             executions = result.get("executions") or []
             final = result.get("final")
@@ -198,22 +226,32 @@ async def resume_run(run_id: str, resume_payload: dict, trace_id: str | None) ->
             "rejected": "run_rejected",
             "failed": "run_failed",
             "conflict": "run_failed",
+            "guard_rejected": "run_failed",
         }.get(exec_status, "run_succeeded")
         payload: dict = {
             "execution_status": exec_status,
             "executions": executions,
             "final": final,
         }
-        if exec_status in ("failed", "conflict"):
-            payload["error"] = (
-                "price_conflict" if exec_status == "conflict" else "execution_failed"
-            )
+        if exec_status in ("failed", "conflict", "guard_rejected"):
+            payload["error"] = {
+                "conflict": "price_conflict",
+                "guard_rejected": "guard_rejected",
+            }.get(exec_status, "execution_failed")
+        # guard_rejected 不在 TERMINAL_STATUSES：run 置 failed，避免 SSE 继续等待
+        run_status = "failed" if exec_status == "guard_rejected" else exec_status
         with get_conn() as conn:
-            _update_run(conn, run_id, status=exec_status, ended_at=now_utc())
+            _update_run(conn, run_id, status=run_status, ended_at=now_utc())
             append_event(
                 conn, run_id, node="run", type=event_type,
                 payload=payload, trace_id=trace_id,
             )
+            if proposal_id:
+                _write_approval_result(conn, run_id, proposal_id, {
+                    "execution_status": exec_status,
+                    "executions": executions,
+                    "final": final,
+                })
     except asyncio.TimeoutError:
         logger.error("run 恢复超时（%ss） run_id=%s", RUN_TIMEOUT_SECONDS, run_id)
         with get_conn() as conn:
@@ -222,6 +260,11 @@ async def resume_run(run_id: str, resume_payload: dict, trace_id: str | None) ->
                 conn, run_id, node="run", type="run_failed",
                 payload={"error": "run_timeout"}, trace_id=trace_id,
             )
+        _write_approval_result_best_effort(run_id, proposal_id, {
+            "execution_status": "failed",
+            "executions": [],
+            "final": "run 恢复超时",
+        })
     except Exception as exc:
         logger.exception("run 恢复失败 run_id=%s", run_id)
         with get_conn() as conn:
@@ -230,6 +273,11 @@ async def resume_run(run_id: str, resume_payload: dict, trace_id: str | None) ->
                 conn, run_id, node="run", type="run_failed",
                 payload={"error": repr(exc)}, trace_id=trace_id,
             )
+        _write_approval_result_best_effort(run_id, proposal_id, {
+            "execution_status": "failed",
+            "executions": [],
+            "final": repr(exc),
+        })
 
 
 # ---- 端点 ----

@@ -121,6 +121,7 @@ class HttpToolClient(ToolClient):
         body 严格对齐 pms-server 契约：
         { storeId, roomTypeId, date, expectedCurrentPrice, nextPrice, reason, approvalId }。
         409（价格已被改，期望值不符）不抛异常，返回 conflict 信封交由 execute 节点标记；
+        422（护栏拒绝）属预期业务结果，同样不抛，返回 guard_rejected 信封如实记录而非当异常；
         其它非 2xx / 超时 / 网络异常向上抛（由 execute 节点捕获转 failed）。写操作不重试。
         """
         params = proposal.get("params") or {}
@@ -143,5 +144,8 @@ class HttpToolClient(ToolClient):
         if resp.status_code == 409:
             # 执行层硬校验失败（价格已被改）：不抛、不重试，由上层转 conflict 终态
             return {"ok": False, "error": "price_conflict", "conflict": True}
+        if resp.status_code == 422:
+            # 护栏拒绝（spec §8）：属预期业务结果，如实记录 guard_rejected，不当异常抛出
+            return {"ok": False, "error": "guard_rejected", "guard_rejected": True}
         resp.raise_for_status()
         return resp.json()

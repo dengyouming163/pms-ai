@@ -96,6 +96,8 @@ async def approve_run(run_id: str, req: ApproveRequest):
         "decision": req.decision,
         "reason": req.reason,
         "approval_id": req.approval_id or proposal_id,
+        # 供 resume_run 回写审批单执行结果（agent_approvals.result / executed_at）
+        "proposal_id": proposal_id,
     }
     task = asyncio.create_task(
         resume_run(run_id, resume_payload, run.get("trace_id"))

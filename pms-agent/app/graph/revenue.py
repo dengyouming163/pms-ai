@@ -204,6 +204,7 @@ async def execute_approved(state: AgentState, *, tools) -> dict:
     - 无 approval → 视为无提案，直接 succeeded（不调工具）。
     - decision != "approve" → rejected，绝不调工具。
     - decision == "approve" → 对首条 proposal 调 tools.price_adjust(tenant, proposal, approval_id)：
+      · 返回 guard_rejected（server 422 护栏拒绝）→ execution_status="guard_rejected"（不重试）。
       · 返回 conflict → execution_status="conflict"（不重试）。
       · 返回 ok → "succeeded"；其它 → "failed"。
       · 任何异常被捕获 → "failed"（不让图崩）。
@@ -238,12 +239,20 @@ async def execute_approved(state: AgentState, *, tools) -> dict:
             "final": f"调价执行失败：{exc!r}",
         }
 
-    if isinstance(result, dict) and (result.get("conflict") or result.get("error") == "price_conflict"):
+    if isinstance(result, dict) and (result.get("guard_rejected") or result.get("error") == "guard_rejected"):
+        status = "guard_rejected"
+    elif isinstance(result, dict) and (result.get("conflict") or result.get("error") == "price_conflict"):
         status = "conflict"
     elif isinstance(result, dict) and result.get("ok"):
         status = "succeeded"
     else:
         status = "failed"
+    if status == "succeeded":
+        final = "调价已执行"
+    elif status == "guard_rejected":
+        final = "调价被护栏拒绝"
+    else:
+        final = "调价执行未成功"
     return {
         "execution_status": status,
         "executions": [{
@@ -251,5 +260,5 @@ async def execute_approved(state: AgentState, *, tools) -> dict:
             "proposal_id": proposal.get("proposal_id"),
             "result": result,
         }],
-        "final": "调价已执行" if status == "succeeded" else "调价执行未成功",
+        "final": final,
     }
