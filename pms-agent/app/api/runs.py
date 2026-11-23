@@ -25,6 +25,7 @@ from langgraph.types import Command
 from pydantic import BaseModel
 from psycopg.types.json import Jsonb
 
+from app.config import settings
 from app.graph.build import build_graph
 from app.insights import record_adoption
 from app.persistence.db import get_checkpointer, get_conn
