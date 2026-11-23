@@ -35,5 +35,7 @@ class AgentState(TypedDict, total=False):
     execution_status: str | None
     # 晨报结构化条目：[{ priority, status, conclusion, evidence, action }]（ops 子图写入）
     ops_report: list[dict[str, Any]]
+    # 住中客服是否转人工（guest 子图写入：知识库未命中或检索失败为 True）
+    guest_transfer: bool
     # 最终对用户的回复
     final: str | None

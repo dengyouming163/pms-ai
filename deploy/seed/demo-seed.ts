@@ -307,6 +307,16 @@ export interface SeedCompetitor {
   status: string;
 }
 
+export interface SeedKbGuide {
+  id: string;
+  storeId: string;
+  key: string;
+  guideType: string;
+  title: string;
+  content: string;
+  status: string;
+}
+
 export interface SeedSnapshot {
   id: string;
   competitorId: string;
@@ -366,6 +376,7 @@ export interface SeedPlan {
   reviews: SeedReview[];
   competitors: SeedCompetitor[];
   competitorSnapshots: SeedSnapshot[];
+  kbGuides: SeedKbGuide[];
   roles: SeedRole[];
   staff: SeedStaff[];
   staffStorePermissions: SeedStaffStorePermission[];
@@ -453,6 +464,57 @@ const REVIEW_POOL = {
 };
 
 const LOW_SCORE_INDEXES = new Set([4, 21, 39, 63, 88, 112]);
+
+/**
+ * 住中客服知识库（FAQ）模板：每个门店各生成一份已发布条目，
+ * 供 pms-agent 的 guest 子图经 /api/internal/agent-tools/kb-search 检索。
+ */
+const KB_FAQ_TEMPLATES: Array<{
+  key: string;
+  title: string;
+  content: (store: StoreConfig) => string;
+}> = [
+  {
+    key: 'wifi',
+    title: 'WiFi 与网络',
+    content: (store) => `WiFi 名称：Yunqi-${store.shortName}，密码：yunqi2026；网络故障可拨打前台 ${store.phone}。`,
+  },
+  {
+    key: 'breakfast',
+    title: '早餐时间与地点',
+    content: (store) => `自助早餐 07:30-09:30，在${store.shortName}一楼庭院茶座供应，含本地小吃。`,
+  },
+  {
+    key: 'checkout',
+    title: '退房与延迟退房',
+    content: () => '标准退房时间 12:00；视房态可免费延迟至 14:00，请提前告知前台。',
+  },
+  {
+    key: 'pet',
+    title: '宠物入住',
+    content: () => '本店暂不接受携带宠物入住，导盲犬除外。',
+  },
+  {
+    key: 'parking',
+    title: '停车与车位',
+    content: (store) => `住客可免费使用${store.shortName}院内停车位，车位有限，先到先得。`,
+  },
+  {
+    key: 'checkin',
+    title: '入住时间与证件',
+    content: () => '入住时间 14:00 后，请携带本人身份证办理登记。',
+  },
+  {
+    key: 'pickup',
+    title: '接送与交通',
+    content: (store) => `可预约高铁站/古镇接送，费用另计，请提前一天联系前台 ${store.phone}。`,
+  },
+  {
+    key: 'deposit',
+    title: '押金与支付',
+    content: () => '入住需预付首晚房费作为押金，离店时原路退还。',
+  },
+];
 
 /**
  * 构建演示种子计划（纯函数，固定随机种子，重复调用结果完全一致）。
@@ -781,6 +843,22 @@ export function buildSeedPlan(): SeedPlan {
     }
   }
 
+  // 每个门店一份住中客服知识库（已发布，供 guest 子图检索）
+  const kbGuides: SeedKbGuide[] = [];
+  roomsFile.stores.forEach((store, storeIndex) => {
+    for (const faq of KB_FAQ_TEMPLATES) {
+      kbGuides.push({
+        id: `kb-yq-${storeIndex + 1}-${faq.key}`,
+        storeId: store.id,
+        key: `guide_faq_${faq.key}`,
+        guideType: 'faq',
+        title: faq.title,
+        content: faq.content(store),
+        status: 'published',
+      });
+    }
+  });
+
   // 演示管理员：商户管理员，绑定 3 家门店
   const role: SeedRole = {
     id: 'role-yunqi-admin',
@@ -844,6 +922,7 @@ export function buildSeedPlan(): SeedPlan {
     reviews,
     competitors,
     competitorSnapshots,
+    kbGuides,
     roles: [role],
     staff: [staff],
     staffStorePermissions,
@@ -938,6 +1017,11 @@ export async function applySeed(client: SqlClient): Promise<Record<string, numbe
     for (const table of deleteOrder) {
       await client.query(`DELETE FROM ${table} WHERE merchant_id = $1`, [merchantId]);
     }
+    // 知识库 FAQ 存放在 settings 表（category='kb_guide'），按租户先清后灌保证幂等
+    await client.query(
+      "DELETE FROM pms_bui_settings WHERE merchant_id = $1 AND category IN ('kb_guide', 'property_profile')",
+      [merchantId],
+    );
 
     const counts: Record<string, number> = {};
 
@@ -1239,6 +1323,31 @@ export async function applySeed(client: SqlClient): Promise<Record<string, numbe
         price: snapshot.price,
         crawled_at: snapshot.crawledAt,
         source: snapshot.source,
+      })),
+    );
+
+    counts.pms_bui_settings = await insertRows(
+      client,
+      'pms_bui_settings',
+      ['id', 'merchant_id', 'store_id', 'category', 'key', 'value', 'description', 'updated_at'],
+      plan.kbGuides.map((guide) => ({
+        id: guide.id,
+        merchant_id: merchantId,
+        store_id: guide.storeId,
+        category: 'kb_guide',
+        key: guide.key,
+        value: json({
+          guide_type: guide.guideType,
+          title: guide.title,
+          content: guide.content,
+          metadata: { tags: ['faq'], source: 'demo-seed' },
+          // 仅 published 会被 kb-search 检索到，草稿不对外答复
+          status: guide.status,
+          ai_generated: false,
+          version: 1,
+        }),
+        description: null,
+        updated_at: brandCreatedAt,
       })),
     );
 

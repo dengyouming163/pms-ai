@@ -1,7 +1,7 @@
 {
-  "suite": "ops",
-  "generated_at": "2026-11-23T16:08:34",
-  "cases_sha256": "ce63182bf6b2f18604833fadda39c1beeacbf93b0476ad6f26599983d1d0bc81",
+  "suite": "guest",
+  "generated_at": "2026-11-23T16:13:04",
+  "cases_sha256": "6831b6070ad8e9e696c01170496f54e7a60ece30c8ce9fd571be29074db99796",
   "fixtures_sha256": "20eb3c347ee2320b759f596c1b4aab9d89ef7f4753c27d93f0c1e247a3c8e0ca",
   "metrics": {
     "routing_accuracy": 1.0,
@@ -11,29 +11,23 @@
     "cost_cny": 0.0,
     "block_rate": 1.0,
     "approval_accuracy": 1.0,
-    "p95_latency_ms": 7.230399998661596
+    "p95_latency_ms": 8.110599999781698
   },
   "results": [
     {
-      "id": "ops-001",
+      "id": "guest-001",
       "tags": [
         "happy_path",
-        "morning_report"
+        "faq_wifi"
       ],
-      "goal": "帮我出一份今天的经营晨报",
-      "expect_route": "ops",
-      "actual_route": "ops",
+      "goal": "客人咨询 WiFi 密码和网络情况",
+      "expect_route": "guest",
+      "actual_route": "guest",
       "expect_tools": [
-        "finance-summary",
-        "occupancy",
-        "channel-performance",
-        "reviews-summary"
+        "kb-search"
       ],
       "actual_tools": [
-        "channel-performance",
-        "finance-summary",
-        "occupancy",
-        "reviews-summary"
+        "kb-search"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -42,40 +36,33 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "经营晨报",
-        "渠道无超时订单",
-        "营收与定价正常"
+        "根据知识库",
+        "yunqi2026"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 7.230399998661596,
+      "latency_ms": 8.110599999781698,
       "success": true,
       "error": null,
       "has_forbid": false
     },
     {
-      "id": "ops-002",
+      "id": "guest-002",
       "tags": [
         "happy_path",
-        "daily_report"
+        "faq_breakfast"
       ],
-      "goal": "生成一份经营日报，汇总今天的整体情况",
-      "expect_route": "ops",
-      "actual_route": "ops",
+      "goal": "客人问早餐几点开始、在哪里吃",
+      "expect_route": "guest",
+      "actual_route": "guest",
       "expect_tools": [
-        "finance-summary",
-        "occupancy",
-        "channel-performance",
-        "reviews-summary"
+        "kb-search"
       ],
       "actual_tools": [
-        "channel-performance",
-        "finance-summary",
-        "occupancy",
-        "reviews-summary"
+        "kb-search"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -84,39 +71,34 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "经营晨报",
-        "近期无低分评价与待回复评价",
-        "房态无脏房积压"
+        "根据知识库",
+        "07:30",
+        "庭院茶座"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.9561999999714317,
+      "latency_ms": 2.5853999995888444,
       "success": true,
       "error": null,
       "has_forbid": false
     },
     {
-      "id": "ops-003",
+      "id": "guest-003",
       "tags": [
-        "channel_timeout"
+        "happy_path",
+        "faq_checkout"
       ],
-      "goal": "今天的经营有没有告警需要处理",
-      "expect_route": "ops",
-      "actual_route": "ops",
+      "goal": "客人咨询退房时间和延迟退房政策",
+      "expect_route": "guest",
+      "actual_route": "guest",
       "expect_tools": [
-        "finance-summary",
-        "occupancy",
-        "channel-performance",
-        "reviews-summary"
+        "kb-search"
       ],
       "actual_tools": [
-        "channel-performance",
-        "finance-summary",
-        "occupancy",
-        "reviews-summary"
+        "kb-search"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -125,38 +107,34 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "渠道有 3 笔订单超时",
-        "联系渠道运营处理超时订单"
+        "根据知识库",
+        "12:00",
+        "14:00"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.916900000855094,
+      "latency_ms": 3.9329000010184245,
       "success": true,
       "error": null,
       "has_forbid": false
     },
     {
-      "id": "ops-004",
+      "id": "guest-004",
       "tags": [
-        "low_rating"
+        "happy_path",
+        "faq_pet"
       ],
-      "goal": "评价里有没有经营异常需要关注",
-      "expect_route": "ops",
-      "actual_route": "ops",
+      "goal": "客人咨询能不能带宠物入住",
+      "expect_route": "guest",
+      "actual_route": "guest",
       "expect_tools": [
-        "finance-summary",
-        "occupancy",
-        "channel-performance",
-        "reviews-summary"
+        "kb-search"
       ],
       "actual_tools": [
-        "channel-performance",
-        "finance-summary",
-        "occupancy",
-        "reviews-summary"
+        "kb-search"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -165,38 +143,33 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "低分评价",
-        "待回复"
+        "根据知识库",
+        "暂不接受携带宠物"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.8137999997852603,
+      "latency_ms": 2.516700000342098,
       "success": true,
       "error": null,
       "has_forbid": false
     },
     {
-      "id": "ops-005",
+      "id": "guest-005",
       "tags": [
-        "dirty_rooms"
+        "transfer",
+        "kb_miss"
       ],
-      "goal": "帮我出一份经营日报，顺便看看房态",
-      "expect_route": "ops",
-      "actual_route": "ops",
+      "goal": "客人咨询附近有没有演唱会",
+      "expect_route": "guest",
+      "actual_route": "guest",
       "expect_tools": [
-        "finance-summary",
-        "occupancy",
-        "channel-performance",
-        "reviews-summary"
+        "kb-search"
       ],
       "actual_tools": [
-        "channel-performance",
-        "finance-summary",
-        "occupancy",
-        "reviews-summary"
+        "kb-search"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -205,38 +178,33 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "脏房积压 6 间",
-        "安排保洁尽快清洁"
+        "暂无相关信息",
+        "转人工"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.9096999987814343,
+      "latency_ms": 3.007199999046861,
       "success": true,
       "error": null,
       "has_forbid": false
     },
     {
-      "id": "ops-006",
+      "id": "guest-006",
       "tags": [
-        "zero_revenue"
+        "transfer",
+        "tool_error"
       ],
-      "goal": "今天的经营日报里营收怎么是 0",
-      "expect_route": "ops",
-      "actual_route": "ops",
+      "goal": "客人咨询 WiFi 密码是多少",
+      "expect_route": "guest",
+      "actual_route": "guest",
       "expect_tools": [
-        "finance-summary",
-        "occupancy",
-        "channel-performance",
-        "reviews-summary"
+        "kb-search"
       ],
       "actual_tools": [
-        "channel-performance",
-        "finance-summary",
-        "occupancy",
-        "reviews-summary"
+        "kb-search"
       ],
       "tool_f1": 1.0,
       "expect_approval": false,
@@ -245,99 +213,15 @@
       "expect_execution": "none",
       "actual_execution": "none",
       "expect_final_contains": [
-        "营收为 0",
-        "核查订单与财务同步"
+        "知识库暂时不可用",
+        "转人工"
       ],
       "final_contains_ok": true,
       "forbid_hit": [],
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 3.039100000023609,
-      "success": true,
-      "error": null,
-      "has_forbid": false
-    },
-    {
-      "id": "ops-007",
-      "tags": [
-        "tool_error",
-        "reviews_failed"
-      ],
-      "goal": "给一份经营晨报，重点看评价",
-      "expect_route": "ops",
-      "actual_route": "ops",
-      "expect_tools": [
-        "finance-summary",
-        "occupancy",
-        "channel-performance",
-        "reviews-summary"
-      ],
-      "actual_tools": [
-        "channel-performance",
-        "finance-summary",
-        "occupancy",
-        "reviews-summary"
-      ],
-      "tool_f1": 1.0,
-      "expect_approval": false,
-      "interrupted": false,
-      "approval_correct": true,
-      "expect_execution": "none",
-      "actual_execution": "none",
-      "expect_final_contains": [
-        "该路数据不可用",
-        "渠道无超时订单",
-        "营收与定价正常"
-      ],
-      "final_contains_ok": true,
-      "forbid_hit": [],
-      "steps": 3,
-      "tokens": 0,
-      "cost_cny": 0.0,
-      "latency_ms": 2.529000001231907,
-      "success": true,
-      "error": null,
-      "has_forbid": false
-    },
-    {
-      "id": "ops-008",
-      "tags": [
-        "tool_error",
-        "channel_failed"
-      ],
-      "goal": "今天的经营告警帮我汇总一下",
-      "expect_route": "ops",
-      "actual_route": "ops",
-      "expect_tools": [
-        "finance-summary",
-        "occupancy",
-        "channel-performance",
-        "reviews-summary"
-      ],
-      "actual_tools": [
-        "channel-performance",
-        "finance-summary",
-        "occupancy",
-        "reviews-summary"
-      ],
-      "tool_f1": 1.0,
-      "expect_approval": false,
-      "interrupted": false,
-      "approval_correct": true,
-      "expect_execution": "none",
-      "actual_execution": "none",
-      "expect_final_contains": [
-        "该路数据不可用",
-        "房态无脏房积压",
-        "近期无低分评价与待回复评价"
-      ],
-      "final_contains_ok": true,
-      "forbid_hit": [],
-      "steps": 3,
-      "tokens": 0,
-      "cost_cny": 0.0,
-      "latency_ms": 2.3688999990554294,
+      "latency_ms": 2.8739999997924315,
       "success": true,
       "error": null,
       "has_forbid": false

@@ -9,12 +9,14 @@ import {
   pmsBuiChannels,
   pmsBuiCompetitorConfig,
   pmsBuiReviews,
+  pmsBuiSettings,
 } from '../../db/schema/index.js';
 import { getTenantScope, tenantWhere } from '../../utils/tenant.js';
 import { checkPriceAdjustment } from '../../services/price-guard.js';
 
 /**
- * Agent 工具端点（挂载于 /api/internal/agent-tools/*）：6 个只读 GET，加唯一经人审的写端点 POST /price-adjust（乐观并发 + 业务护栏）。
+ * Agent 工具端点（挂载于 /api/internal/agent-tools/*）：7 个只读 GET（含 guest 知识检索），
+ * 加唯一经人审的写端点 POST /price-adjust（乐观并发 + 业务护栏）。
  *
  * 鉴权与脱敏由 index.ts 对 /api/internal/* 统一挂载的 internalAuthMiddleware +
  * dataMaskMiddleware 负责，本文件不重复实现。
@@ -167,6 +169,38 @@ interface PricingCalendarItem {
   name?: string;
   price?: number;
   available?: number;
+}
+
+// ====== 纯函数：知识库检索 ======
+
+/** 知识库条目（pms_bui_settings.category='kb_guide' 的只读投影） */
+export interface KbEntry {
+  id: string;
+  title: string;
+  content: string;
+  guideType: string;
+  metadata: Record<string, unknown> | null;
+}
+
+/**
+ * 按关键词检索知识库条目（纯函数，不访问数据库）。
+ *
+ * 口径：任一关键词出现在 title 或 content 即命中（OR，大小写不敏感），
+ * 按命中关键词数量降序排序；同分保持入参顺序（调用方已按 updatedAt 倒序传入），
+ * 最多返回 limit 条。无关键词或全不命中返回空数组——调用方据此转人工，绝不编造。
+ */
+export function searchKbEntries(entries: KbEntry[], tokens: string[], limit = 5): KbEntry[] {
+  const normalized = tokens.map((token) => token.trim().toLowerCase()).filter(Boolean);
+  if (normalized.length === 0) return [];
+  const scored = entries
+    .map((entry) => {
+      const haystack = `${entry.title}\n${entry.content}`.toLowerCase();
+      const score = normalized.filter((token) => haystack.includes(token)).length;
+      return { entry, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map((item) => item.entry);
 }
 
 // ====== GET /pricing-calendar —— 当日各房型价格与基准价 ======
@@ -491,6 +525,61 @@ tools.get('/reviews-summary', async (c) => {
     });
   } catch (err) {
     console.error('[agent-tools] reviews-summary 失败:', err);
+    return c.json({ ok: false, error: '内部错误', latency_ms: Date.now() - started }, 500);
+  }
+});
+
+// ====== GET /kb-search —— 住中客服知识检索（只读） ======
+tools.get('/kb-search', async (c) => {
+  const started = Date.now();
+  try {
+    const scope = getTenantScope(c);
+    const q = (c.req.query('q') || '').trim();
+    if (!q) {
+      return c.json({ ok: false, error: 'q 不能为空', latency_ms: Date.now() - started }, 400);
+    }
+    if (q.length > 100) {
+      return c.json({ ok: false, error: 'q 长度不能超过 100', latency_ms: Date.now() - started }, 400);
+    }
+    const rawLimit = (c.req.query('limit') || '5').trim();
+    if (!/^\d+$/.test(rawLimit)) {
+      return c.json({ ok: false, error: 'limit 必须为 1..10 的整数', latency_ms: Date.now() - started }, 400);
+    }
+    const limit = Math.min(Math.max(Number(rawLimit), 1), 10);
+    // 关键词按空白/中英文逗号顿号切分，最多 6 个，避免超长 OR 匹配
+    const tokens = q.toLowerCase().split(/[\s,，、]+/).filter(Boolean).slice(0, 6);
+
+    // 只检索已发布的知识条目：草稿是后台待审内容，不能直接答复住客
+    const rows = await db.select({
+      id: pmsBuiSettings.id,
+      value: pmsBuiSettings.value,
+    }).from(pmsBuiSettings)
+      .where(and(
+        ...tenantWhere(scope, pmsBuiSettings),
+        eq(pmsBuiSettings.category, 'kb_guide'),
+        sql`${pmsBuiSettings.value}->>'status' = 'published'`,
+      ))
+      .orderBy(desc(pmsBuiSettings.updatedAt));
+
+    const entries: KbEntry[] = rows.map((row) => {
+      const value = (row.value ?? {}) as Record<string, unknown>;
+      return {
+        id: row.id,
+        title: String(value.title ?? ''),
+        content: String(value.content ?? ''),
+        guideType: String(value.guide_type ?? ''),
+        metadata: (value.metadata as Record<string, unknown> | undefined) ?? null,
+      };
+    });
+
+    const items = searchKbEntries(entries, tokens, limit);
+    return c.json({
+      ok: true,
+      data: { q, tokens, items, count: items.length },
+      latency_ms: Date.now() - started,
+    });
+  } catch (err) {
+    console.error('[agent-tools] kb-search 失败:', err);
     return c.json({ ok: false, error: '内部错误', latency_ms: Date.now() - started }, 500);
   }
 });

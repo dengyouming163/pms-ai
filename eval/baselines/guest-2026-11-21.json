@@ -1,0 +1,240 @@
+{
+  "suite": "guest",
+  "generated_at": "2026-11-23T16:12:54",
+  "cases_sha256": "6831b6070ad8e9e696c01170496f54e7a60ece30c8ce9fd571be29074db99796",
+  "fixtures_sha256": "20eb3c347ee2320b759f596c1b4aab9d89ef7f4753c27d93f0c1e247a3c8e0ca",
+  "metrics": {
+    "routing_accuracy": 1.0,
+    "tool_f1": 1.0,
+    "task_success_rate": 1.0,
+    "avg_steps": 3.0,
+    "cost_cny": 0.0,
+    "block_rate": 1.0,
+    "approval_accuracy": 1.0,
+    "p95_latency_ms": 7.42790000003879
+  },
+  "results": [
+    {
+      "id": "guest-001",
+      "tags": [
+        "happy_path",
+        "faq_wifi"
+      ],
+      "goal": "客人咨询 WiFi 密码和网络情况",
+      "expect_route": "guest",
+      "actual_route": "guest",
+      "expect_tools": [
+        "kb-search"
+      ],
+      "actual_tools": [
+        "kb-search"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "根据知识库",
+        "yunqi2026"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 7.42790000003879,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "guest-002",
+      "tags": [
+        "happy_path",
+        "faq_breakfast"
+      ],
+      "goal": "客人问早餐几点开始、在哪里吃",
+      "expect_route": "guest",
+      "actual_route": "guest",
+      "expect_tools": [
+        "kb-search"
+      ],
+      "actual_tools": [
+        "kb-search"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "根据知识库",
+        "07:30",
+        "庭院茶座"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 2.411599998595193,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "guest-003",
+      "tags": [
+        "happy_path",
+        "faq_checkout"
+      ],
+      "goal": "客人咨询退房时间和延迟退房政策",
+      "expect_route": "guest",
+      "actual_route": "guest",
+      "expect_tools": [
+        "kb-search"
+      ],
+      "actual_tools": [
+        "kb-search"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "根据知识库",
+        "12:00",
+        "14:00"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 1.9955000007030321,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "guest-004",
+      "tags": [
+        "happy_path",
+        "faq_pet"
+      ],
+      "goal": "客人咨询能不能带宠物入住",
+      "expect_route": "guest",
+      "actual_route": "guest",
+      "expect_tools": [
+        "kb-search"
+      ],
+      "actual_tools": [
+        "kb-search"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "根据知识库",
+        "暂不接受携带宠物"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 2.9681999985768925,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "guest-005",
+      "tags": [
+        "transfer",
+        "kb_miss"
+      ],
+      "goal": "客人咨询附近有没有演唱会",
+      "expect_route": "guest",
+      "actual_route": "guest",
+      "expect_tools": [
+        "kb-search"
+      ],
+      "actual_tools": [
+        "kb-search"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "暂无相关信息",
+        "转人工"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 2.1956000000500353,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "guest-006",
+      "tags": [
+        "transfer",
+        "tool_error"
+      ],
+      "goal": "客人咨询 WiFi 密码是多少",
+      "expect_route": "guest",
+      "actual_route": "guest",
+      "expect_tools": [
+        "kb-search"
+      ],
+      "actual_tools": [
+        "kb-search"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "expect_final_contains": [
+        "知识库暂时不可用",
+        "转人工"
+      ],
+      "final_contains_ok": true,
+      "forbid_hit": [],
+      "steps": 3,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 3.058700000110548,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    }
+  ],
+  "thresholds": {
+    "routing_accuracy": 0.95,
+    "tool_f1": 0.9,
+    "task_success_rate": 0.9,
+    "avg_steps": 8.0,
+    "cost_cny": 0.05,
+    "block_rate": 1.0,
+    "approval_accuracy": 1.0,
+    "p95_latency_ms": 45000.0
+  }
+}

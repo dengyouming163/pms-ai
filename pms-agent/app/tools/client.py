@@ -50,6 +50,10 @@ class ToolClient(ABC):
         """ops 体检只读工具（Task 13）。默认抛 NotImplementedError：假工具无需实现。"""
         raise NotImplementedError
 
+    async def kb_search(self, tenant: dict, query: str) -> dict:
+        """guest 知识检索只读工具（Task 14）。默认抛 NotImplementedError：假工具无需实现。"""
+        raise NotImplementedError
+
 
 class HttpToolClient(ToolClient):
     """生产实现：httpx 调 pms-server 内部端点，统一信封 { ok, data, latency_ms }。"""
@@ -135,6 +139,9 @@ class HttpToolClient(ToolClient):
 
     async def reviews_summary(self, tenant, days=30):
         return await self._get("/reviews-summary", {"days": days}, tenant)
+
+    async def kb_search(self, tenant, query):
+        return await self._get("/kb-search", {"q": query}, tenant)
 
     async def price_adjust(self, tenant, proposal, approval_id=None):
         """执行调价写操作：POST /price-adjust。

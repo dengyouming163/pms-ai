@@ -102,6 +102,21 @@ DEFAULT_TOOL_DATA = {
             "items": [],
         },
     },
+    # 默认知识库命中一条 WiFi 条目；转人工用例会覆盖为空列表或声明工具失败
+    "kb-search": {
+        "ok": True,
+        "data": {
+            "q": "wifi",
+            "tokens": ["wifi"],
+            "count": 1,
+            "items": [{
+                "id": "kb-default-wifi",
+                "title": "WiFi 与网络",
+                "content": "WiFi 名称：Yunqi-Qingyan，密码：yunqi2026；网络故障可拨打前台 0851-86880101。",
+                "guideType": "faq",
+            }],
+        },
+    },
 }
 
 
@@ -147,6 +162,9 @@ class CaseTools:
 
     async def reviews_summary(self, tenant, days=30):
         return self._hit("reviews-summary")
+
+    async def kb_search(self, tenant, query):
+        return self._hit("kb-search")
 
     async def price_adjust(self, tenant, proposal, approval_id=None):
         self.calls.append("price-adjust")

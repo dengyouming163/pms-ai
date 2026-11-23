@@ -10,7 +10,7 @@ from app.state import AgentState
 _ROUTE_RULES: list[tuple[str, list[str]]] = [
     ("revenue", ["涨价", "定价", "房价", "调价"]),
     ("ops", ["晨报", "日报", "异常", "告警", "经营"]),
-    ("guest", ["无线", "早餐", "退房", "咨询", "wifi", "WiFi"]),
+    ("guest", ["无线", "早餐", "退房", "咨询", "wifi", "WiFi", "宠物", "停车"]),
     ("ota", ["渠道", "携程", "美团", "超时", "飞猪"]),
 ]
 

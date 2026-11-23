@@ -12,7 +12,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
 from app.config import settings
-from app.graph import ops, revenue, supervisor
+from app.graph import guest, ops, revenue, supervisor
 from app.providers.replay import ReplayProvider
 from app.state import AgentState
 from app.tools.client import HttpToolClient
@@ -31,7 +31,7 @@ def _route_after_supervisor(state: AgentState) -> str:
 
 
 def synthesize_stub(state: AgentState) -> dict:
-    """非 revenue/ops 路由的占位节点（guest/ota/direct 子图在后续任务实现）。"""
+    """非 revenue/ops/guest 路由的占位节点（ota/direct 子图在后续任务实现）。"""
     route = state.get("route") or "direct"
     return {"final": f"路由 {route} 的子图将在后续任务实现，当前为占位回复。"}
 
@@ -63,6 +63,9 @@ def build_graph(provider=None, tools=None, model: str | None = None,
     # ops 晨报：四路只读体检 → 确定性规则成文（不调模型）
     workflow.add_node("ops_collect", _bind_async(ops.collect_checks, tools=tools))
     workflow.add_node("ops_report", ops.build_report)
+    # guest 住中客服：知识检索 → 确定性作答/转人工（只读，不调模型）
+    workflow.add_node("guest_collect", _bind_async(guest.search_knowledge, tools=tools))
+    workflow.add_node("guest_answer", guest.answer_guest)
     workflow.add_node("synthesize", synthesize_stub)
 
     workflow.set_entry_point("supervisor")
@@ -74,7 +77,7 @@ def build_graph(provider=None, tools=None, model: str | None = None,
         {
             "revenue": "revenue_collect",
             "ops": "ops_collect",
-            "guest": "synthesize",
+            "guest": "guest_collect",
             "ota": "synthesize",
             "direct": "synthesize",
         },
@@ -90,6 +93,10 @@ def build_graph(provider=None, tools=None, model: str | None = None,
     # ops 子图线性连接 → END（只读，无审批/执行）
     workflow.add_edge("ops_collect", "ops_report")
     workflow.add_edge("ops_report", END)
+
+    # guest 子图线性连接 → END（只读，知识库未命中时转人工）
+    workflow.add_edge("guest_collect", "guest_answer")
+    workflow.add_edge("guest_answer", END)
 
     # 其它路由经占位节点 → END
     workflow.add_edge("synthesize", END)
