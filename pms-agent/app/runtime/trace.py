@@ -136,8 +136,10 @@ class TraceCallbackHandler(BaseCallbackHandler):
         self._emit("node_start", node, payload={"node": node}, started_at=started_at)
 
     def on_chain_end(self, outputs, *, run_id, **kwargs):
-        node = self._pop_node(run_id, kwargs)
-        started_at = self._starts.get(str(run_id), {}).get("started_at")
+        # 先取出并移除节点开始信息，再读 started_at；否则 pop 之后恒为 None
+        info = self._starts.pop(str(run_id), None)
+        node = info["node"] if info else self._node_name(None, kwargs)
+        started_at = info["started_at"] if info else None
         self._emit("node_end", node, payload={"node": node},
                    started_at=started_at, ended_at=now_utc())
 

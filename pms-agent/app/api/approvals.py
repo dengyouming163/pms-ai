@@ -90,7 +90,7 @@ async def approve_run(run_id: str, req: ApproveRequest):
         proposal = _latest_proposal(conn, run_id)
         if not proposal or not proposal.get("proposal_id"):
             raise HTTPException(status_code=409, detail="approval proposal not found")
-        proposal_id = proposal["proposal_id"] or req.approval_id or ""
+        proposal_id = proposal["proposal_id"]
         # CAS 抢占：并发重复审批只有一个请求能成功置 running，输者不写审批单
         if not _claim_run(conn, run_id):
             raise HTTPException(

@@ -1,6 +1,6 @@
 {
   "suite": "ops",
-  "generated_at": "2026-11-23T16:05:47",
+  "generated_at": "2026-11-23T16:08:34",
   "cases_sha256": "ce63182bf6b2f18604833fadda39c1beeacbf93b0476ad6f26599983d1d0bc81",
   "fixtures_sha256": "20eb3c347ee2320b759f596c1b4aab9d89ef7f4753c27d93f0c1e247a3c8e0ca",
   "metrics": {
@@ -11,7 +11,7 @@
     "cost_cny": 0.0,
     "block_rate": 1.0,
     "approval_accuracy": 1.0,
-    "p95_latency_ms": 4.86310000087542
+    "p95_latency_ms": 7.230399998661596
   },
   "results": [
     {
@@ -51,7 +51,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 4.86310000087542,
+      "latency_ms": 7.230399998661596,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -93,7 +93,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 3.944000000046799,
+      "latency_ms": 2.9561999999714317,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -133,7 +133,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.4247000001196284,
+      "latency_ms": 2.916900000855094,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -173,7 +173,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.3267999986273935,
+      "latency_ms": 2.8137999997852603,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -213,7 +213,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.7751000015996397,
+      "latency_ms": 2.9096999987814343,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -253,7 +253,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.4843000010150718,
+      "latency_ms": 3.039100000023609,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -295,7 +295,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.8210000000399305,
+      "latency_ms": 2.529000001231907,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -337,7 +337,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.5783000000956235,
+      "latency_ms": 2.3688999990554294,
       "success": true,
       "error": null,
       "has_forbid": false

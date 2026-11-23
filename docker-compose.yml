@@ -174,8 +174,11 @@ services:
       - PMS_SERVER_URL=http://pms-server:9090
       # 规范名（优先于 PMS_SERVER_URL）；config 两者都识别，显式传入避免回退默认
       - PMS_SERVER_INTERNAL_URL=http://pms-server:9090
-      # Agent 检查点/事件库：用 compose 内服务名 postgres + 容器内端口 5432
-      - AGENT_DATABASE_URL=postgresql://pms:pms_local_dev@postgres:5432/pms_ai?options=-c%20search_path%3Dagent
+      # Agent 检查点/事件库：用 compose 内服务名 postgres + 容器内端口 5432。
+      # 与上方 postgres 服务的 DB_* 保持同一来源，避免改 .env 后 agent 连到旧库。
+      - AGENT_DATABASE_URL=postgresql://${DB_USER:-gate}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-aipms}?options=-c%20search_path%3Dagent
+      # 本地演示只允许该商户创建运行，阻断任意 merchant_id 的跨商户读写（M1 收敛护栏）
+      - AGENT_ALLOWED_MERCHANTS=${AGENT_ALLOWED_MERCHANTS:-demo-yunqi}
       - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
       - REDIS_URL=redis://redis:6379
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}

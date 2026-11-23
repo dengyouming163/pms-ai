@@ -55,6 +55,22 @@ class CreateRunRequest(BaseModel):
     trace_id: str | None = None
 
 
+def validate_tenant(tenant: dict | None, allowed_merchants: list[str]) -> tuple[int, str] | None:
+    """校验请求体里的租户：必填 merchant_id，且配置了允许列表时必须在列表内。
+
+    返回 (HTTP 状态码, 错误信息)；None 表示通过。
+
+    ⚠️ 这是本地演示的收敛护栏，不是完整鉴权：租户身份最终必须由认证主体推导
+    （M2 硬化任务），不能长期信任客户端传入的 merchant_id。
+    """
+    merchant_id = str((tenant or {}).get("merchant_id") or "").strip()
+    if not merchant_id:
+        return 400, "tenant.merchant_id 必填"
+    if allowed_merchants and merchant_id not in allowed_merchants:
+        return 403, f"商户 {merchant_id} 不在允许列表"
+    return None
+
+
 def _json_default(o):
     """json.dumps 默认值转换器：处理 datetime / Decimal 等非原生 JSON 类型。"""
     if isinstance(o, datetime):
@@ -301,6 +317,10 @@ async def resume_run(run_id: str, resume_payload: dict, trace_id: str | None) ->
 
 @router.post("")
 async def create_run(req: CreateRunRequest):
+    tenant_error = validate_tenant(req.tenant, settings.allowed_merchant_list)
+    if tenant_error is not None:
+        status_code, detail = tenant_error
+        raise HTTPException(status_code=status_code, detail=detail)
     run_id = str(uuid.uuid4())
     with get_conn() as conn:
         _insert_run(conn, run_id, req.goal, req.tenant or {}, req.trace_id)

@@ -34,7 +34,9 @@ const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const NON_REVENUE_STATUSES = new Set(['cancelled', 'no_show']);
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  // 业务日按上海时区计算，与 pms-agent 的日期口径一致；
+  // 直接 toISOString 用 UTC 日界，北京时间 00:00-08:00 会差一天。
+  return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
 function isValidDate(value: string): boolean {

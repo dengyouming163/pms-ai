@@ -20,6 +20,10 @@ from app.state import AgentState
 
 logger = logging.getLogger(__name__)
 
+# 单次运行最多提交审批的提案数：审批抽屉一次只呈现一条，多提案会无入口可审。
+# 超出部分在 propose 中显式写入 evidence（propose:truncated），不静默丢弃。
+MAX_PROPOSALS_PER_RUN = 1
+
 
 # ====== prompt 构建（纯函数，确定性） ======
 
@@ -194,7 +198,12 @@ def _calendar_date(evidence: list[dict[str, Any]]) -> str | None:
 
 
 def propose(state: AgentState) -> dict:
-    """对每条建议生成 proposal，追加到 state['proposals']。"""
+    """对建议生成 proposal 并写入 state['proposals']。
+
+    单次运行只提交 1 条建议审批：审批抽屉一次只能呈现/决策一条，
+    多条会导致其余建议既无审批入口也无执行，静默丢失。
+    被截断的建议会在 evidence 显式留痕，避免"看起来全执行了"的误导。
+    """
     analysis = state.get("analysis") or []
     run_id = state.get("run_id") or "run"
     evidence = list(state.get("evidence") or [])
@@ -202,8 +211,9 @@ def propose(state: AgentState) -> dict:
     # 执行层（price-adjust）硬校验需要 date 与 expectedCurrentPrice，propose 时补齐
     date = _calendar_date(evidence)
 
+    kept = analysis[:MAX_PROPOSALS_PER_RUN]
     proposals: list[dict[str, Any]] = []
-    for i, s in enumerate(analysis):
+    for i, s in enumerate(kept):
         # roomTypeId 缺失时兜底为 'unknown'，避免 idempotency_key 出现 'None' 字样
         room_type_id = s.get("roomTypeId") or "unknown"
         current_price = s.get("currentPrice")
@@ -225,7 +235,18 @@ def propose(state: AgentState) -> dict:
             # 加索引 i 避免同房型多条建议冲突（如分时调价）
             "idempotency_key": f"{run_id}-{room_type_id}-price-adjust-{i}",
         })
-    return {"proposals": proposals}
+
+    result: dict[str, Any] = {"proposals": proposals}
+    dropped = len(analysis) - len(kept)
+    if dropped > 0:
+        result["evidence"] = evidence + [{
+            "source": "agent",
+            "tool": "propose",
+            "summary": f"本轮仅提交 1 条建议审批，其余 {dropped} 条未纳入本次执行",
+            "payload_ref": "propose:truncated",
+            "payload": None,
+        }]
+    return result
 
 
 async def request_approval(state: AgentState) -> dict:

@@ -4,6 +4,7 @@
 - 路由挂在根路径，不加 /api（与 pms-server→agent 的遗留转发约定区分）。
 """
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,11 +14,19 @@ from app.api.runs import router as runs_router
 from app.config import settings
 from app.persistence.db import init_db
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动期初始化 DB（失败致命，便于尽早发现配置/连通问题；IF NOT EXISTS 保证重启幂等）
     await init_db()
+    # M1 只有 ReplayProvider：配置成 live 也不会切真实模型，显式告警避免误判
+    if settings.llm_provider != "replay":
+        logger.warning(
+            "LLM_PROVIDER=%s，但当前版本尚未实现 LiveProvider，仍将使用回放",
+            settings.llm_provider,
+        )
     yield
 
 

@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     # 先做 json.loads 解码，逗号串 "http://a,http://b" 不是合法 JSON 会抛 SettingsError
     # （连单值也会失败）。用 Any 让原始字符串到达下方 before-validator，再拆成 list[str]。
     cors_origins: Any = Field(default_factory=lambda: ["http://localhost:3000"])
+    # 允许创建运行的商户白名单（逗号分隔）。空字符串表示不额外限制（仅本地单测/离线）。
+    # 本地演示在 compose 中固定为 demo-yunqi，阻断任意 merchant_id 的跨商户读写。
+    allowed_merchants: str = ""
+
+    @property
+    def allowed_merchant_list(self) -> list[str]:
+        """把 AGENT_ALLOWED_MERCHANTS 拆成去空白后的列表。"""
+        return [item.strip() for item in self.allowed_merchants.split(",") if item.strip()]
 
     @field_validator("cors_origins", mode="before")
     @classmethod

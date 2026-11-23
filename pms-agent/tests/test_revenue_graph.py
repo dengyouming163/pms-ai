@@ -219,6 +219,26 @@ def test_analysis_prompt_is_deterministic():
     assert build_analysis_prompt(evidence) == build_analysis_prompt(evidence)
 
 
+def test_propose_keeps_single_suggestion_and_marks_truncation():
+    """多条建议时只提交 1 条（审批抽屉一次只能呈现一条），并在 evidence 显式留痕。"""
+    from app.graph.revenue import propose
+
+    state = {
+        "run_id": "run-x",
+        "analysis": [
+            {"roomTypeId": "rt-a", "currentPrice": 100, "suggestedPrice": 110, "reason": "a"},
+            {"roomTypeId": "rt-b", "currentPrice": 200, "suggestedPrice": 220, "reason": "b"},
+        ],
+        "evidence": [],
+    }
+    out = propose(state)
+
+    assert len(out["proposals"]) == 1
+    assert out["proposals"][0]["params"]["roomTypeId"] == "rt-a"
+    truncated = [e for e in out.get("evidence", []) if "其余 1 条" in e.get("summary", "")]
+    assert truncated, "被截断的建议必须在 evidence 中显式记录，不能静默丢弃"
+
+
 def _evidence_with(latency_ms=12, date="2026-11-24", price=300, occupancy_rate=92):
     """构造两份可调字段的 evidence：latency/date 属易变项，price/occupancyRate 属业务数据。"""
     return [

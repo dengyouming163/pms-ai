@@ -58,10 +58,32 @@ async def setup_checkpointer() -> None:
     logger.info("checkpointer 表 setup 完成（幂等）")
 
 
+def fail_stale_runs(conn) -> int:
+    """启动对账：把上次进程退出时仍停在 running 的运行标记为 failed。
+
+    running 只由进程内后台任务推进；进程重启后这些任务已不存在，
+    若不对账，run 会永久停在 running，前端轮询/SSE 也无法终结。
+    awaiting_approval 是合法的人审挂起态，必须保留。
+    注意：仅适用于单实例部署（本地演示）；多实例需改为心跳/看门狗。
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE agent_runs SET status = 'failed', ended_at = now()"
+            " WHERE status = 'running'"
+        )
+        return cur.rowcount
+
+
 async def init_db() -> None:
-    """启动初始化：先建业务表，再建检查点表。任一步失败都向上抛（启动期致命，便于发现问题）。"""
+    """启动初始化：先建业务表并清理重启遗留的 running，再建检查点表。
+
+    任一步失败都向上抛（启动期致命，便于发现问题）。
+    """
     with get_conn() as conn:
         init_schema(conn)
+        stale = fail_stale_runs(conn)
+        if stale:
+            logger.warning("启动对账：%d 个上次未完成的 run 已标记 failed", stale)
     await setup_checkpointer()
 
 
@@ -79,4 +101,7 @@ async def get_checkpointer():
         yield saver
 
 
-__all__ = ["get_conn", "init_db", "init_db_sync", "get_checkpointer", "init_schema", "setup_checkpointer"]
+__all__ = [
+    "fail_stale_runs", "get_conn", "init_db", "init_db_sync",
+    "get_checkpointer", "init_schema", "setup_checkpointer",
+]

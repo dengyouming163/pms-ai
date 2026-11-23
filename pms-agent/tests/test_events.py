@@ -175,6 +175,10 @@ def test_trace_callback_emits_node_events_to_injected_sink():
     types = [c["type"] for c in calls]
     assert "node_start" in types
     assert "node_end" in types
+    # node_end 必须带节点开始时间（用于计算节点耗时，不能是 None）
+    node_end = next(c for c in calls if c["type"] == "node_end")
+    assert node_end["started_at"] is not None
+    assert node_end["ended_at"] is not None
     # 每次写入都携带 run_id 与 trace_id
     for c in calls:
         assert c["run_id"] == "run-x"
