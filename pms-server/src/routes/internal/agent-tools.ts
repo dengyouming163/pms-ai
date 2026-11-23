@@ -15,7 +15,7 @@ import { getTenantScope, tenantWhere } from '../../utils/tenant.js';
 import { checkPriceAdjustment } from '../../services/price-guard.js';
 
 /**
- * Agent 工具端点（挂载于 /api/internal/agent-tools/*）：8 个只读 GET（含 guest 知识检索、OTA 渠道同步状态），
+ * Agent 工具端点（挂载于 /api/internal/agent-tools/*）：9 个只读 GET（含 guest 知识检索、OTA 渠道同步状态、日营收），
  * 加唯一经人审的写端点 POST /price-adjust（乐观并发 + 业务护栏）。
  *
  * 鉴权与脱敏由 index.ts 对 /api/internal/* 统一挂载的 internalAuthMiddleware +
@@ -664,6 +664,36 @@ tools.get('/channel-status', async (c) => {
     return c.json({ ok: true, data: summary, latency_ms: Date.now() - started });
   } catch (err) {
     console.error('[agent-tools] channel-status 失败:', err);
+    return c.json({ ok: false, error: '内部错误', latency_ms: Date.now() - started }, 500);
+  }
+});
+
+// ====== GET /daily-revenue —— 某日实际营收（归因 T+7 回填） ======
+tools.get('/daily-revenue', async (c) => {
+  const started = Date.now();
+  try {
+    const scope = getTenantScope(c);
+    const date = (c.req.query('date') || '').trim();
+    if (!isValidDate(date)) {
+      return c.json({ ok: false, error: 'date 格式非法，应为 YYYY-MM-DD', latency_ms: Date.now() - started }, 400);
+    }
+    const rows = await db.select({
+      status: pmsBuiOrders.status,
+      totalPrice: pmsBuiOrders.totalPrice,
+    }).from(pmsBuiOrders).where(and(
+      ...tenantWhere(scope, pmsBuiOrders),
+      eq(pmsBuiOrders.checkIn, date),
+    ));
+
+    const valid = rows.filter((order) => !NON_REVENUE_STATUSES.has(order.status));
+    const revenue = round2(valid.reduce((sum, order) => sum + toNumber(order.totalPrice), 0));
+    return c.json({
+      ok: true,
+      data: { date, revenue, orderCount: valid.length },
+      latency_ms: Date.now() - started,
+    });
+  } catch (err) {
+    console.error('[agent-tools] daily-revenue 失败:', err);
     return c.json({ ok: false, error: '内部错误', latency_ms: Date.now() - started }, 500);
   }
 });

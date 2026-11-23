@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from psycopg.types.json import Jsonb
 
 from app.graph.build import build_graph
+from app.insights import record_adoption
 from app.persistence.db import get_checkpointer, get_conn
 from app.persistence.events import TERMINAL_STATUSES, append_event, list_events
 from app.runtime.trace import TraceCallbackHandler
@@ -240,6 +241,37 @@ def _write_approval_result_best_effort(run_id: str, proposal_id: str, result: di
         )
 
 
+async def _record_adoption_best_effort(run_id: str, result: dict) -> None:
+    """调价执行成功后写归因基线（失败只记日志，绝不影响 run 终结）。
+
+    baseline_revenue 口径：目标日入住率 × 门店总房量 × 调价前价格；
+    取不到入住率时回落单间夜口径（不编造高营收）。
+    """
+    try:
+        proposals = result.get("proposals") or []
+        if not proposals:
+            return
+        proposal = proposals[0]
+        tenant = result.get("tenant") or {}
+        target_date = (proposal.get("params") or {}).get("date")
+        occupancy_rate, total_rooms = 0, 0
+        try:
+            from app.tools.client import HttpToolClient
+            snapshot = await HttpToolClient().occupancy(tenant, date=target_date)
+            data = (snapshot or {}).get("data") or {}
+            occupancy_rate = data.get("occupancyRate")
+            total_rooms = data.get("total")
+        except Exception:
+            logger.warning("归因基线取入住率失败，回落单间夜口径 run_id=%s", run_id)
+        with get_conn() as conn:
+            record_adoption(
+                conn, run_id=run_id, proposal=proposal, tenant=tenant,
+                occupancy_rate=occupancy_rate, total_rooms=total_rooms,
+            )
+    except Exception:
+        logger.warning("采纳归因写入失败 run_id=%s", run_id, exc_info=True)
+
+
 async def resume_run(run_id: str, resume_payload: dict, trace_id: str | None) -> None:
     """恢复挂起的图（人审决策后由 approvals 端点后台调用），并终结 run。
 
@@ -263,6 +295,9 @@ async def resume_run(run_id: str, resume_payload: dict, trace_id: str | None) ->
             exec_status = normalize_exec_status(result.get("execution_status"))
             executions = result.get("executions") or []
             final = result.get("final")
+        # 调价成功才写归因；写入失败只告警，不影响 run 终态
+        if exec_status == "succeeded":
+            await _record_adoption_best_effort(run_id, result)
         event_type = run_event_type(exec_status)
         payload: dict = {
             "execution_status": exec_status,

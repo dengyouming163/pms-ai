@@ -82,3 +82,48 @@ export function approveRun(
 export function eventStreamUrl(runId: string, afterSeq = 0): string {
   return `${AGENT_BASE}/runs/${runId}/events?after=${afterSeq}`;
 }
+
+/** 采纳归因记录（GET /insights 的 items） */
+export interface AgentInsightItem {
+  id: number;
+  run_id: string;
+  proposal_ref: string;
+  room_type_id: string | null;
+  target_date: string | null;
+  baseline_price: number | string | null;
+  adopted_price: number | string | null;
+  baseline_rooms: number;
+  baseline_revenue: number | string;
+  observed_revenue: number | string | null;
+  attribution_note: string | null;
+  adopted_at: string;
+  observed_at: string | null;
+}
+
+/** 采纳归因汇总 */
+export interface AgentInsightsSummary {
+  adopted_count: number;
+  decided_count: number;
+  adoption_rate: number;
+  observed_count: number;
+  pending_backfill_count: number;
+  attribution_gain: number;
+  attribution_note: string;
+}
+
+/** 查询采纳归因（归因非因果，由 attribution_note 明确标注） */
+export function getInsights(merchantId?: string) {
+  const query = merchantId ? `?merchant_id=${encodeURIComponent(merchantId)}` : '';
+  return apiGet<{ summary: AgentInsightsSummary; items: AgentInsightItem[] }>(
+    `${AGENT_BASE}/insights${query}`,
+  );
+}
+
+/** 触发 T+7 归因回填（用当日实际营收回填 observed_revenue） */
+export function backfillInsights(merchantId?: string) {
+  const query = merchantId ? `?merchant_id=${encodeURIComponent(merchantId)}` : '';
+  return apiPost<{ checked: number; filled: number; skipped: number; errors: number }>(
+    `${AGENT_BASE}/insights/backfill${query}`,
+    {},
+  );
+}

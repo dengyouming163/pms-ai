@@ -32,6 +32,7 @@ import { useSidebar } from '@/lib/context/sidebar-context';
 
 const menuItems = [
   { href: '/agent-console', icon: Bot, label: 'AI 协作台', permission: '' },
+  { href: '/agent-console/insights', icon: TrendingUp, label: '收益归因', permission: '' },
   { href: '/rooms', icon: BedDouble, label: '房态管理', permission: 'rooms:view' },
   { href: '/orders', icon: ClipboardList, label: '订单管理', permission: 'orders:view' },
   { href: '/pricing-center', icon: DollarSign, label: '定价中心', permission: 'pricing:view' },
@@ -217,7 +218,11 @@ function SidebarContent({ initial, name, roleLabel, logout, onNavClick }: {
         </Link>
         <div className="border-t border-slate-100 my-1" />
         {visibleItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          // 取最长前缀匹配，避免 /agent-console/insights 同时点亮 /agent-console
+          const activeHref = visibleItems
+            .filter((entry) => pathname === entry.href || pathname.startsWith(entry.href + '/'))
+            .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+          const isActive = item.href === activeHref;
           return (
             <Link
               key={item.href}

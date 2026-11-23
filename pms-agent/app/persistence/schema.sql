@@ -74,3 +74,29 @@ CREATE TABLE IF NOT EXISTS agent.agent_memories (
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant, scope, key)
 );
+
+-- 建议采纳与收益归因（M2 Task 16）
+-- baseline_revenue：采纳时按「当日预计售出间夜 × 原价」估算的基线营收；
+-- observed_revenue：T+7 由 /insights/backfill 用当日实际营收回填；
+-- attribution_note 明确「归因非因果」，避免把相关当因果。
+CREATE TABLE IF NOT EXISTS agent.agent_insights (
+    id               BIGSERIAL PRIMARY KEY,
+    run_id           TEXT NOT NULL,
+    proposal_ref     TEXT NOT NULL,
+    tenant           JSONB NOT NULL DEFAULT '{}'::jsonb,
+    room_type_id     TEXT,
+    target_date      DATE,
+    baseline_price   NUMERIC(10, 2),
+    adopted_price    NUMERIC(10, 2),
+    baseline_rooms   INTEGER NOT NULL DEFAULT 1,
+    baseline_revenue NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    observed_revenue NUMERIC(12, 2),
+    attribution_note TEXT,
+    adopted_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    observed_at      TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (run_id, proposal_ref)
+);
+CREATE INDEX IF NOT EXISTS agent_insights_target_date_idx
+    ON agent.agent_insights (target_date);
+

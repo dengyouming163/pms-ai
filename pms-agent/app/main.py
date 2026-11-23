@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.approvals import router as approvals_router
+from app.api.insights import router as insights_router
 from app.api.runs import router as runs_router
 from app.config import settings
 from app.persistence.db import init_db
@@ -51,3 +52,5 @@ def health() -> dict:
 app.include_router(runs_router)
 # 人审恢复端点（POST /runs/{id}/approve）
 app.include_router(approvals_router)
+# 建议采纳与收益归因（GET /insights、POST /insights/backfill）
+app.include_router(insights_router)
