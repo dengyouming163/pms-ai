@@ -1,4 +1,4 @@
-"""组装 LangGraph 主图：supervisor → 按 route 分派 → revenue 子图 → END。
+"""组装 LangGraph 主图：supervisor → 按 route 分派 → revenue / ops 子图 → END。
 
 依赖（provider / tools / model）通过 build_graph 注入，测试可替换为假工具 + 回放 provider。
 checkpointer 默认 MemorySaver（测试用），生产传入 Postgres checkpointer 以支持 interrupt 中断/恢复。
@@ -12,7 +12,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
 from app.config import settings
-from app.graph import revenue, supervisor
+from app.graph import ops, revenue, supervisor
 from app.providers.replay import ReplayProvider
 from app.state import AgentState
 from app.tools.client import HttpToolClient
@@ -31,7 +31,7 @@ def _route_after_supervisor(state: AgentState) -> str:
 
 
 def synthesize_stub(state: AgentState) -> dict:
-    """非 revenue 路由的占位节点（ops/guest/ota/direct 子图在后续任务实现）。"""
+    """非 revenue/ops 路由的占位节点（guest/ota/direct 子图在后续任务实现）。"""
     route = state.get("route") or "direct"
     return {"final": f"路由 {route} 的子图将在后续任务实现，当前为占位回复。"}
 
@@ -60,6 +60,9 @@ def build_graph(provider=None, tools=None, model: str | None = None,
     workflow.add_node("revenue_propose", revenue.propose)
     workflow.add_node("revenue_request_approval", _bind_async(revenue.request_approval))
     workflow.add_node("revenue_execute", _bind_async(revenue.execute_approved, tools=tools))
+    # ops 晨报：四路只读体检 → 确定性规则成文（不调模型）
+    workflow.add_node("ops_collect", _bind_async(ops.collect_checks, tools=tools))
+    workflow.add_node("ops_report", ops.build_report)
     workflow.add_node("synthesize", synthesize_stub)
 
     workflow.set_entry_point("supervisor")
@@ -70,7 +73,7 @@ def build_graph(provider=None, tools=None, model: str | None = None,
         _route_after_supervisor,
         {
             "revenue": "revenue_collect",
-            "ops": "synthesize",
+            "ops": "ops_collect",
             "guest": "synthesize",
             "ota": "synthesize",
             "direct": "synthesize",
@@ -83,6 +86,10 @@ def build_graph(provider=None, tools=None, model: str | None = None,
     workflow.add_edge("revenue_propose", "revenue_request_approval")
     workflow.add_edge("revenue_request_approval", "revenue_execute")
     workflow.add_edge("revenue_execute", END)
+
+    # ops 子图线性连接 → END（只读，无审批/执行）
+    workflow.add_edge("ops_collect", "ops_report")
+    workflow.add_edge("ops_report", END)
 
     # 其它路由经占位节点 → END
     workflow.add_edge("synthesize", END)

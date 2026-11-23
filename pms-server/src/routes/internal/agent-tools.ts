@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, eq, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, gte, sql, type SQL } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import {
   pmsBuiPricingCalendar,
@@ -8,12 +8,13 @@ import {
   pmsBuiOrders,
   pmsBuiChannels,
   pmsBuiCompetitorConfig,
+  pmsBuiReviews,
 } from '../../db/schema/index.js';
 import { getTenantScope, tenantWhere } from '../../utils/tenant.js';
 import { checkPriceAdjustment } from '../../services/price-guard.js';
 
 /**
- * Agent 工具端点（挂载于 /api/internal/agent-tools/*）：5 个只读 GET，加唯一经人审的写端点 POST /price-adjust（乐观并发 + 业务护栏）。
+ * Agent 工具端点（挂载于 /api/internal/agent-tools/*）：6 个只读 GET，加唯一经人审的写端点 POST /price-adjust（乐观并发 + 业务护栏）。
  *
  * 鉴权与脱敏由 index.ts 对 /api/internal/* 统一挂载的 internalAuthMiddleware +
  * dataMaskMiddleware 负责，本文件不重复实现。
@@ -71,6 +72,50 @@ function toNumber(value: unknown): number {
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+// ====== 纯函数：评价汇总 ======
+
+/** 评价汇总输入行（pms_bui_reviews 的只读投影） */
+export interface ReviewSummaryRow {
+  id: string;
+  channelName: string;
+  rating: number;
+  content: string | null;
+  reviewTime: string;
+  replyStatus: string;
+}
+
+export interface ReviewsSummary {
+  total: number;
+  avgRating: number;
+  lowRatingCount: number;
+  pendingReplyCount: number;
+  items: ReviewSummaryRow[];
+}
+
+/** 明细最多回显条数（聚合按全量计算，仅明细截断） */
+export const REVIEWS_ITEMS_LIMIT = 20;
+
+/**
+ * 汇总评价（纯函数，不访问数据库）。
+ *
+ * 口径：
+ * - avgRating = 全量评分均值，保留 2 位小数；无数据返回 0（不是 NaN）；
+ * - lowRatingCount = rating <= 3 的条数（低分风险）；
+ * - pendingReplyCount = replyStatus === 'pending' 的条数（待回复）；
+ * - items 截断为前 20 条（调用方已按 reviewTime 倒序传入）。
+ */
+export function summarizeReviews(reviews: ReviewSummaryRow[]): ReviewsSummary {
+  const total = reviews.length;
+  const ratingSum = reviews.reduce((sum, row) => sum + toNumber(row.rating), 0);
+  return {
+    total,
+    avgRating: total > 0 ? round2(ratingSum / total) : 0,
+    lowRatingCount: reviews.filter((row) => toNumber(row.rating) <= 3).length,
+    pendingReplyCount: reviews.filter((row) => row.replyStatus === 'pending').length,
+    items: reviews.slice(0, REVIEWS_ITEMS_LIMIT),
+  };
 }
 
 // ====== 纯函数：入住率快照 ======
@@ -401,6 +446,49 @@ tools.get('/finance-summary', async (c) => {
     });
   } catch (err) {
     console.error('[agent-tools] finance-summary 失败:', err);
+    return c.json({ ok: false, error: '内部错误', latency_ms: Date.now() - started }, 500);
+  }
+});
+
+// ====== GET /reviews-summary —— 近 N 天评价汇总（晨报体检） ======
+tools.get('/reviews-summary', async (c) => {
+  const started = Date.now();
+  try {
+    const scope = getTenantScope(c);
+    const rawDays = (c.req.query('days') || '30').trim();
+    // 只接受纯数字：拦掉 1.5 / abc / 空串等，避免 parseInt 静默截断
+    if (!/^\d+$/.test(rawDays)) {
+      return c.json({ ok: false, error: 'days 必须为 1..90 的整数', latency_ms: Date.now() - started }, 400);
+    }
+    const days = Number(rawDays);
+    if (!Number.isInteger(days) || days < 1 || days > 90) {
+      return c.json({ ok: false, error: 'days 必须为 1..90 的整数', latency_ms: Date.now() - started }, 400);
+    }
+    // from 含当天：days=1 表示只看今天
+    const from = addDays(todayStr(), -(days - 1));
+
+    // reviewTime 是 varchar（YYYY-MM-DD），字典序即日期序，直接比较即可
+    const rows = await db.select({
+      id: pmsBuiReviews.id,
+      channelName: pmsBuiReviews.channelName,
+      rating: pmsBuiReviews.rating,
+      content: pmsBuiReviews.content,
+      reviewTime: pmsBuiReviews.reviewTime,
+      replyStatus: pmsBuiReviews.replyStatus,
+    }).from(pmsBuiReviews)
+      .where(and(
+        ...tenantWhere(scope, pmsBuiReviews),
+        gte(pmsBuiReviews.reviewTime, from),
+      ))
+      .orderBy(desc(pmsBuiReviews.reviewTime));
+
+    return c.json({
+      ok: true,
+      data: { days, from, ...summarizeReviews(rows) },
+      latency_ms: Date.now() - started,
+    });
+  } catch (err) {
+    console.error('[agent-tools] reviews-summary 失败:', err);
     return c.json({ ok: false, error: '内部错误', latency_ms: Date.now() - started }, 500);
   }
 });

@@ -9,7 +9,7 @@
 
 运行（仓库根目录）：
     pms-agent\\.venv\\Scripts\\python.exe -m eval.run_eval --suite revenue
-    pms-agent\\.venv\\Scripts\\python.exe -m eval.run_eval --suite revenue --write-baseline
+    pms-agent\\.venv\\Scripts\\python.exe -m eval.run_eval --suite ops --write-baseline
 """
 from __future__ import annotations
 
@@ -37,8 +37,8 @@ from eval.metrics import mean, percentile, routing_accuracy, tool_f1  # noqa: E4
 # ---- 常量 ----
 MODEL = "deepseek-chat"
 DEFAULT_TENANT = {"merchant_id": "demo-yunqi", "store_id": "store-yunqi-qingyan"}
-# 基线与门槛（规格 §11.2 / §11.3）
-BASELINE_NAME = "revenue-2026-11-21.json"
+# 基线与门槛（规格 §11.2 / §11.3）；基线按套件独立，避免新增套件让旧套件假漂移
+BASELINE_DATE = "2026-11-21"
 THRESHOLDS = {
     "routing_accuracy": 0.95,
     "tool_f1": 0.90,
@@ -75,6 +75,33 @@ DEFAULT_TOOL_DATA = {
         "data": {"avgPrice": 470, "count": 4, "items": [{"hotelName": "云栖竞品A", "price": 468}]},
     },
     "channel-performance": {"ok": True, "data": {"orderCount": 12, "revenue": 5136, "items": []}},
+    "finance-summary": {
+        "ok": True,
+        "data": {
+            "month": "2026-11",
+            "revenue": 128760,
+            "adr": 428,
+            "revpar": 312,
+            "occupancyRate": 72,
+            "orderCount": 301,
+            "nights": 301,
+            "roomCount": 40,
+            "daysInMonth": 30,
+        },
+    },
+    # 默认评价数据为「干净」：无低分、无待回复，避免污染非评价类用例的晨报
+    "reviews-summary": {
+        "ok": True,
+        "data": {
+            "days": 30,
+            "from": "2026-10-23",
+            "total": 0,
+            "avgRating": 0,
+            "lowRatingCount": 0,
+            "pendingReplyCount": 0,
+            "items": [],
+        },
+    },
 }
 
 
@@ -114,6 +141,12 @@ class CaseTools:
 
     async def channel_performance(self, tenant, date_from=None, date_to=None):
         return self._hit("channel-performance")
+
+    async def finance_summary(self, tenant, month=None):
+        return self._hit("finance-summary")
+
+    async def reviews_summary(self, tenant, days=30):
+        return self._hit("reviews-summary")
 
     async def price_adjust(self, tenant, proposal, approval_id=None):
         self.calls.append("price-adjust")
@@ -211,10 +244,16 @@ async def run_case(case: dict) -> dict:
     approval_correct = interrupted == expect_approval
     route_ok = actual_route == case["expect_route"]
     execution_ok = actual_execution == case.get("expect_execution", "none")
+    final_text = values.get("final") or ""
+    expect_final_contains = case.get("expect_final_contains") or []
+    final_contains_ok = all(token in final_text for token in expect_final_contains)
     f1 = tool_f1(case.get("expect_tools") or [], tools.calls)
     cost_cny = provider.total_tokens / 1000 * TOKEN_PRICE_CNY_PER_1K
 
-    success = bool(route_ok and not forbid_hit and approval_correct and execution_ok and not error)
+    success = bool(
+        route_ok and not forbid_hit and approval_correct and execution_ok
+        and final_contains_ok and not error
+    )
     return {
         "id": case["id"],
         "tags": case.get("tags") or [],
@@ -229,6 +268,8 @@ async def run_case(case: dict) -> dict:
         "approval_correct": approval_correct,
         "expect_execution": case.get("expect_execution", "none"),
         "actual_execution": actual_execution,
+        "expect_final_contains": expect_final_contains,
+        "final_contains_ok": final_contains_ok,
         "forbid_hit": forbid_hit,
         "steps": counter["steps"],
         "tokens": provider.total_tokens,
@@ -327,6 +368,11 @@ def compare_with_baseline(baseline: dict, metrics: dict) -> list[str]:
     return problems
 
 
+def baseline_filename(suite: str) -> str:
+    """基线文件按套件命名：新增套件不会让既有套件的基线因 cases 指纹变化而漂移。"""
+    return f"{suite}-{BASELINE_DATE}.json"
+
+
 def render_markdown(suite: str, payload: dict, baseline: dict | None, problems: list[str]) -> str:
     metrics = payload["metrics"]
     base_metrics = (baseline or {}).get("metrics") or {}
@@ -336,7 +382,7 @@ def render_markdown(suite: str, payload: dict, baseline: dict | None, problems: 
         "",
         f"- 生成时间：{payload['generated_at']}",
         f"- 用例数：{len(payload['results'])}",
-        f"- 基线：{BASELINE_NAME}（cases {payload['cases_sha256'][:12]}…，fixtures {payload['fixtures_sha256'][:12]}…）",
+        f"- 基线：{baseline_filename(suite)}（cases {payload['cases_sha256'][:12]}…，fixtures {payload['fixtures_sha256'][:12]}…）",
         f"- 结论：**{verdict}**",
         "",
         "| 指标 | 当前 | 门槛 | 基线 |",
@@ -394,7 +440,7 @@ async def _run_suite(args) -> int:
         "results": results,
     }
 
-    baseline_path = baselines_dir / BASELINE_NAME
+    baseline_path = baselines_dir / baseline_filename(args.suite)
     baseline = None
     problems: list[str] = []
     drift: list[str] = []

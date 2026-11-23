@@ -19,7 +19,8 @@ from app.config import settings
 
 
 class ToolClient(ABC):
-    """工具客户端接口：4 个 revenue 只读工具 + price_adjust 写操作（Task 9）。"""
+    """工具客户端接口：4 个 revenue 只读工具 + price_adjust 写操作（Task 9）
+    + 2 个 ops 只读体检工具（Task 13）。"""
 
     @abstractmethod
     async def pricing_calendar(self, tenant: dict, date: str | None = None,
@@ -39,6 +40,14 @@ class ToolClient(ABC):
     async def price_adjust(self, tenant: dict, proposal: dict,
                            approval_id: str | None = None) -> dict:
         """执行层写操作（Task 9）。默认抛 NotImplementedError：假工具（鸭子类型）无需实现。"""
+        raise NotImplementedError
+
+    async def finance_summary(self, tenant: dict, month: str | None = None) -> dict:
+        """ops 体检只读工具（Task 13）。默认抛 NotImplementedError：假工具无需实现。"""
+        raise NotImplementedError
+
+    async def reviews_summary(self, tenant: dict, days: int = 30) -> dict:
+        """ops 体检只读工具（Task 13）。默认抛 NotImplementedError：假工具无需实现。"""
         raise NotImplementedError
 
 
@@ -119,6 +128,13 @@ class HttpToolClient(ToolClient):
         if date_to:
             params["to"] = date_to
         return await self._get("/channel-performance", params, tenant)
+
+    async def finance_summary(self, tenant, month=None):
+        params = {"month": month} if month else {}
+        return await self._get("/finance-summary", params, tenant)
+
+    async def reviews_summary(self, tenant, days=30):
+        return await self._get("/reviews-summary", {"days": days}, tenant)
 
     async def price_adjust(self, tenant, proposal, approval_id=None):
         """执行调价写操作：POST /price-adjust。
