@@ -29,13 +29,51 @@ ANALYZE_SYSTEM_PROMPT = (
 )
 
 
+# prompt 中必须剔除的易变字段：延迟随网络波动、日期随运行日变化，
+# 任一进入 prompt 都会让 sha256 改变，导致回放夹具无法命中。
+_VOLATILE_KEYS = {
+    "latency_ms", "latencyms",
+    "date",
+    "created_at", "createdat", "updated_at", "updatedat",
+    "timestamp", "trace_id",
+}
+
+
+def _stable_view(value):
+    """递归剔除易变字段并按键排序，得到确定性投影。"""
+    if isinstance(value, dict):
+        return {
+            k: _stable_view(v)
+            for k, v in sorted(value.items())
+            if k.lower() not in _VOLATILE_KEYS
+        }
+    if isinstance(value, list):
+        return [_stable_view(v) for v in value]
+    return value
+
+
+def _normalized_evidence(evidence):
+    """把 evidence 归一为「工具 + 摘要 + 稳定数据投影」，剔除 latency/日期等易变项。"""
+    normalized = []
+    for item in evidence:
+        payload = item.get("payload")
+        data = payload.get("data") if isinstance(payload, dict) else None
+        normalized.append({
+            "tool": item.get("tool"),
+            "summary": item.get("summary"),
+            "data": _stable_view(data),
+        })
+    return normalized
+
+
 def build_analysis_prompt(evidence: list[dict[str, Any]]) -> str:
     """由 evidence 确定性构造 analyze 的 prompt。
 
     确定性要求：sort_keys=True 保证 dict 序列化顺序稳定；
-    不含时间戳、随机数、运行时 id，从而 sha256(prompt) 在回放中可复现。
+    只投影「工具 + 摘要 + 业务数据」，剔除 latency_ms / date / 时间戳等易变字段，
+    从而 sha256(prompt) 在回放中可复现（夹具不会因网络延迟或跨天而失效）。
     """
-    payload = json.dumps(evidence, ensure_ascii=False, sort_keys=True)
+    payload = json.dumps(_normalized_evidence(evidence), ensure_ascii=False, sort_keys=True)
     return f"{ANALYZE_SYSTEM_PROMPT}\n证据：\n{payload}"
 
 

@@ -4,6 +4,7 @@
 测试里调用同一个 build_analysis_prompt 得到 prompt 字符串并算 sha256，
 把夹具写到临时目录再传给 ReplayProvider，从而自包含、稳定、可复现。
 """
+import copy
 import json
 
 from langgraph.types import Command
@@ -216,3 +217,65 @@ def test_analysis_prompt_is_deterministic():
     """同一 evidence 必须产出完全相同的 prompt（保证回放 hash 稳定）。"""
     evidence = [{"source": "pms-server", "tool": "occupancy", "payload": {"occupancyRate": 90}}]
     assert build_analysis_prompt(evidence) == build_analysis_prompt(evidence)
+
+
+def _evidence_with(latency_ms=12, date="2026-11-24", price=300, occupancy_rate=92):
+    """构造两份可调字段的 evidence：latency/date 属易变项，price/occupancyRate 属业务数据。"""
+    return [
+        {
+            "source": "pms-server",
+            "tool": "pricing-calendar",
+            "summary": "1 个房型价格",
+            "payload_ref": "pricing-calendar:0",
+            "payload": {
+                "ok": True,
+                "data": {
+                    "date": date,
+                    "items": [{"roomTypeId": "rt_001", "price": price}],
+                },
+                "latency_ms": latency_ms,
+            },
+        },
+        {
+            "source": "pms-server",
+            "tool": "occupancy",
+            "summary": f"入住率 {occupancy_rate}%",
+            "payload_ref": "occupancy:0",
+            "payload": {
+                "ok": True,
+                "data": {"occupancyRate": occupancy_rate, "total": 10},
+                "latency_ms": latency_ms,
+            },
+        },
+    ]
+
+
+def test_analysis_prompt_ignores_volatile_fields():
+    """latency_ms 与 data.date 变化不得影响 prompt（否则回放夹具永远命中不了）。"""
+    a = _evidence_with(latency_ms=12, date="2026-11-24")
+    b = _evidence_with(latency_ms=987, date="2026-12-31")
+    assert build_analysis_prompt(a) == build_analysis_prompt(b)
+
+
+def test_analysis_prompt_changes_with_business_data():
+    """业务数据（价格/入住率）变化必须反映到 prompt，避免过度归一化丢掉有效信息。"""
+    a = _evidence_with(price=300, occupancy_rate=92)
+    b = _evidence_with(price=360, occupancy_rate=75)
+    assert build_analysis_prompt(a) != build_analysis_prompt(b)
+
+
+async def test_collect_prompt_stable_across_volatile_mutation():
+    """端到端回归：collect 出的 evidence 与其 latency/date 被改写后的副本，prompt 完全一致。"""
+    collected = await collect({"tenant": {"merchant_id": "m1"}}, tools=FakeTools())
+    evidence = collected["evidence"]
+
+    mutated = copy.deepcopy(evidence)
+    for item in mutated:
+        payload = item.get("payload")
+        if isinstance(payload, dict):
+            payload["latency_ms"] = 4321
+            data = payload.get("data")
+            if isinstance(data, dict) and "date" in data:
+                data["date"] = "2027-01-01"
+
+    assert build_analysis_prompt(evidence) == build_analysis_prompt(mutated)
