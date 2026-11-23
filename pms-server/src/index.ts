@@ -30,6 +30,7 @@ import aiModelConfigRoute from './routes/ai/model-config.js';
 import videoScriptRoute from './routes/video-script.js';
 import internalAiToolsRoute from './routes/internal/ai-tools.js';
 import internalMiniAIToolsRoute from './routes/internal/ai-tools/mini.js';
+import internalAgentToolsRoute from './routes/internal/agent-tools.js';
 import internalMerchantInitRoute from './routes/internal/merchant-init.js';
 import internalSmsRoute from './routes/internal/sms.js';
 import internalNotifyRoute from './routes/internal/notify.js';
@@ -337,6 +338,8 @@ app.use('/api/internal/*', internalAuthMiddleware);
 app.use('/api/internal/*', dataMaskMiddleware);
 app.route('/api/internal/ai-tools', internalAiToolsRoute);
 app.route('/api/internal/ai-tools/mini', internalMiniAIToolsRoute);
+// Agent 只读工具端点（价格日历/入住率/竞对价/渠道表现/财务汇总），供 pms-agent 经内部 Token 调用
+app.route('/api/internal/agent-tools', internalAgentToolsRoute);
 app.route('/api/internal/merchants', internalMerchantInitRoute);
 app.route('/api/internal/sms', internalSmsRoute);
 app.route('/api/internal/notify', internalNotifyRoute);
