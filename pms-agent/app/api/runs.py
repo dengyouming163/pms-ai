@@ -173,6 +173,33 @@ async def _execute_run(run_id: str, goal: str, tenant: dict, trace_id: str | Non
 
 # ---- 审批单执行结果回写（spec §8：审批记录需含执行结果） ----
 
+# 图恢复后的合法执行状态；未命中（含 None）一律视为 succeeded（兼容旧状态）
+VALID_EXEC_STATUSES = ("succeeded", "rejected", "conflict", "guard_rejected", "failed")
+
+
+def normalize_exec_status(raw: str | None) -> str:
+    """纯函数：把图返回的 execution_status 归一为合法终态，未知值回落 succeeded。"""
+    return raw if raw in VALID_EXEC_STATUSES else "succeeded"
+
+
+def run_event_type(exec_status: str) -> str:
+    """纯函数：执行状态 → run 终态事件类型。"""
+    if exec_status == "rejected":
+        return "run_rejected"
+    if exec_status in ("conflict", "guard_rejected", "failed"):
+        return "run_failed"
+    return "run_succeeded"
+
+
+def run_error_code(exec_status: str) -> str | None:
+    """纯函数：执行状态 → 事件 error 码；成功/驳回无 error。"""
+    return {
+        "conflict": "price_conflict",
+        "guard_rejected": "guard_rejected",
+        "failed": "execution_failed",
+    }.get(exec_status)
+
+
 def _write_approval_result(conn, run_id: str, proposal_id: str, result: dict) -> None:
     """把执行结果回写到 agent_approvals（按 run_id + proposal_id 定位审批单）。"""
     with conn.cursor() as cur:
@@ -217,31 +244,21 @@ async def resume_run(run_id: str, resume_payload: dict, trace_id: str | None) ->
                 ),
                 timeout=RUN_TIMEOUT_SECONDS,
             )
-            exec_status = result.get("execution_status")
-            if exec_status not in ("conflict", "rejected", "guard_rejected", "failed"):
-                exec_status = "succeeded"
+            exec_status = normalize_exec_status(result.get("execution_status"))
             executions = result.get("executions") or []
             final = result.get("final")
-        event_type = {
-            "rejected": "run_rejected",
-            "failed": "run_failed",
-            "conflict": "run_failed",
-            "guard_rejected": "run_failed",
-        }.get(exec_status, "run_succeeded")
+        event_type = run_event_type(exec_status)
         payload: dict = {
             "execution_status": exec_status,
             "executions": executions,
             "final": final,
         }
-        if exec_status in ("failed", "conflict", "guard_rejected"):
-            payload["error"] = {
-                "conflict": "price_conflict",
-                "guard_rejected": "guard_rejected",
-            }.get(exec_status, "execution_failed")
-        # guard_rejected 不在 TERMINAL_STATUSES：run 置 failed，避免 SSE 继续等待
-        run_status = "failed" if exec_status == "guard_rejected" else exec_status
+        error_code = run_error_code(exec_status)
+        if error_code:
+            payload["error"] = error_code
+        # guard_rejected 为终态（TERMINAL_STATUSES），直接以执行状态作为 run 状态
         with get_conn() as conn:
-            _update_run(conn, run_id, status=run_status, ended_at=now_utc())
+            _update_run(conn, run_id, status=exec_status, ended_at=now_utc())
             append_event(
                 conn, run_id, node="run", type=event_type,
                 payload=payload, trace_id=trace_id,
@@ -357,4 +374,6 @@ async def _event_stream(run_id: str, after: int):
             await asyncio.sleep(SSE_POLL_INTERVAL_SECONDS)
 
 
-__all__ = ["router", "resume_run"]
+__all__ = [
+    "router", "resume_run", "normalize_exec_status", "run_event_type", "run_error_code",
+]

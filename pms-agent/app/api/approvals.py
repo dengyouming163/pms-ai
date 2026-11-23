@@ -1,6 +1,6 @@
 """人审恢复端点：POST /runs/{run_id}/approve（Task 9）。
 
-流程：决策校验 → 读运行状态 → 幂等写 agent_approvals → 置 running → 后台恢复图 → 立即返回。
+流程：决策校验 → 读运行状态 → 原子抢占置 running → 幂等写 agent_approvals → 后台恢复图 → 立即返回。
 - 非法 decision → 422；run 不存在 → 404；非 awaiting_approval → 409（含重复审批）。
 - 恢复在后台任务中执行（与 POST /runs 一致），避免 HTTP 阻塞最长 RUN_TIMEOUT_SECONDS；
   客户端通过 GET /runs/{id} 或 SSE 事件流看到最终态。
@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel
 
-from app.api.runs import _RUN_TASKS, _get_run, _update_run, resume_run
+from app.api.runs import _RUN_TASKS, _get_run, resume_run
 from app.graph.approval import decide
 from app.persistence.db import get_conn
 from app.persistence.events import append_event, list_events
@@ -42,6 +42,17 @@ def _latest_proposal(conn, run_id: str) -> dict:
     return {}
 
 
+def _claim_run(conn, run_id: str) -> bool:
+    """原子抢占：仅当 run 仍处于 awaiting_approval 时置 running，返回是否抢占成功。"""
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE agent_runs SET status = 'running'"
+            " WHERE id = %s AND status = 'awaiting_approval'",
+            (run_id,),
+        )
+        return cur.rowcount == 1
+
+
 def _upsert_approval(conn, run_id: str, proposal_id: str, proposal: dict,
                      req: ApproveRequest) -> None:
     """幂等写审批单：依赖 UNIQUE(run_id, proposal_id)，重复审批只更新决策字段。"""
@@ -67,7 +78,7 @@ async def approve_run(run_id: str, req: ApproveRequest):
     if not decision_result["accepted"]:
         raise HTTPException(status_code=422, detail=decision_result["error"])
 
-    # 2~5. 读 run、取 proposal、幂等写审批单；先置 running 防重复审批并发进入
+    # 2~5. 读 run、取 proposal、原子抢占置 running、幂等写审批单
     with get_conn() as conn:
         run = _get_run(conn, run_id)
         if run is None:
@@ -77,9 +88,15 @@ async def approve_run(run_id: str, req: ApproveRequest):
                 status_code=409, detail="run is not awaiting approval",
             )
         proposal = _latest_proposal(conn, run_id)
-        proposal_id = proposal.get("proposal_id") or req.approval_id or ""
+        if not proposal or not proposal.get("proposal_id"):
+            raise HTTPException(status_code=409, detail="approval proposal not found")
+        proposal_id = proposal["proposal_id"] or req.approval_id or ""
+        # CAS 抢占：并发重复审批只有一个请求能成功置 running，输者不写审批单
+        if not _claim_run(conn, run_id):
+            raise HTTPException(
+                status_code=409, detail="run is not awaiting approval",
+            )
         _upsert_approval(conn, run_id, proposal_id, proposal, req)
-        _update_run(conn, run_id, status="running")
         append_event(
             conn, run_id, node="approval", type="approval_decided",
             payload={

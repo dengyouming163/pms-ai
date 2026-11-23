@@ -31,7 +31,7 @@ class AgentState(TypedDict, total=False):
     approvals: list[Any]
     # 执行结果：[{ status: succeeded/conflict/failed, proposal_id, result/error }]（execute 节点写入）
     executions: list[dict[str, Any]]
-    # 执行状态：succeeded / rejected / conflict / failed（approve 端点据此定 run 终态）
+    # 执行状态：succeeded / rejected / conflict / guard_rejected / failed（approve 端点据此定 run 终态）
     execution_status: str | None
     # 最终对用户的回复
     final: str | None

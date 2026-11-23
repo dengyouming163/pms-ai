@@ -46,10 +46,13 @@ class HttpToolClient(ToolClient):
     """生产实现：httpx 调 pms-server 内部端点，统一信封 { ok, data, latency_ms }。"""
 
     def __init__(self, base_url: str | None = None, token: str | None = None,
-                 timeout: float = 10.0):
+                 timeout: float = 10.0,
+                 transport: httpx.AsyncBaseTransport | None = None):
         self.base_url = (base_url or settings.agent_tools_base).rstrip("/")
         self.token = token or settings.internal_service_token
         self.timeout = timeout
+        # 可注入 transport：测试用 httpx.MockTransport 验证契约，默认 None 行为不变
+        self._transport = transport
 
     def _headers(self, tenant: dict) -> dict[str, str]:
         headers = {"X-Internal-Service-Token": self.token}
@@ -68,7 +71,9 @@ class HttpToolClient(ToolClient):
         last_exc: Exception | None = None
         for attempt in range(2):
             try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                async with httpx.AsyncClient(
+                    timeout=self.timeout, transport=self._transport,
+                ) as client:
                     resp = await client.get(
                         f"{self.base_url}{path}", params=params,
                         headers=self._headers(tenant),
@@ -135,7 +140,9 @@ class HttpToolClient(ToolClient):
             # approval_id 缺失时用 proposal_id 兜底，保证执行层 approvalId 非空
             "approvalId": approval_id or proposal.get("proposal_id"),
         }
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(
+            timeout=self.timeout, transport=self._transport,
+        ) as client:
             resp = await client.post(
                 f"{self.base_url}/price-adjust",
                 json=body,

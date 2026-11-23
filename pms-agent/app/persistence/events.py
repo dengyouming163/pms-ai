@@ -24,7 +24,7 @@ MAX_APPEND_RETRIES = 5
 
 # 运行终态：SSE 轮询到这些状态且无新事件时结束连接
 TERMINAL_STATUSES = frozenset({
-    "succeeded", "failed", "rejected", "budget_exceeded", "conflict",
+    "succeeded", "failed", "rejected", "budget_exceeded", "conflict", "guard_rejected",
 })
 
 
