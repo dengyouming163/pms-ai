@@ -60,9 +60,9 @@ jobs:
       - name: 类型检查
         working-directory: pms-server
         run: pnpm run ts-check
-      - name: 单元测试
+      - name: 核心单测（Agent 工具 / 调价护栏 / 种子）
         working-directory: pms-server
-        run: pnpm vitest run
+        run: pnpm vitest run src/routes/internal deploy/seed/demo-seed.test.ts
 
   web:
     name: Web · ts-check

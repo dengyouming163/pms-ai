@@ -65,8 +65,8 @@ cd pms-agent; .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m eval.run_eval --suite guest
 .\.venv\Scripts\python.exe -m eval.run_eval --suite ota
 
-# 服务端类型检查与单测
-cd ..\pms-server; pnpm run ts-check; pnpm vitest run
+# 服务端类型检查与核心单测（完整套件需本地 Postgres 与种子）
+cd ..\pms-server; pnpm run ts-check; pnpm vitest run src/routes/internal deploy/seed/demo-seed.test.ts
 
 # 前端类型检查
 cd ..\pms-web; pnpm run ts-check

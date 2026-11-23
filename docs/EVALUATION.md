@@ -104,7 +104,7 @@ pms-agent\.venv\Scripts\python.exe -m eval.run_eval --suite ota
 
 1. `pms-agent` pytest；
 2. 四个评测套件；
-3. `pms-server` 类型检查与 Vitest；
+3. `pms-server` 类型检查与核心单测（Agent 工具、调价护栏、种子数据）；
 4. `pms-web` 类型检查。
 
 任一退出码非 0 即阻断合并。

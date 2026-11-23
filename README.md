@@ -141,7 +141,7 @@ pms-agent\.venv\Scripts\python.exe -m eval.run_eval --suite ota
 # pms-agent：103 passed
 cd pms-agent; .\.venv\Scripts\python.exe -m pytest -q
 
-# pms-server：类型检查 + Vitest
+# pms-server：类型检查 + Vitest（完整套件需本地 Postgres 与种子；CI 跑 Agent 相关核心子集）
 cd pms-server; pnpm run ts-check; pnpm vitest run
 
 # pms-web：类型检查
