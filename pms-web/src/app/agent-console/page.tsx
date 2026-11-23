@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   Bot,
@@ -11,8 +11,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
+import { ApprovalDrawer, formatPercent, formatPrice, parseProposal } from '@/components/agent/approval-drawer';
 import { RunForm } from '@/components/agent/run-form';
 import { RunStatusBadge, Timeline, useAgentEventStream } from '@/components/agent/timeline';
+import { Button } from '@/components/ui/button';
 import { createRun, getRun, type AgentRun } from '@/lib/agent-api';
 import { AGENT_DEMO_MERCHANT_ID } from '@/lib/constants';
 import { useStore } from '@/lib/context/store-context';
@@ -83,8 +85,24 @@ export default function AgentConsolePage() {
   const [run, setRun] = useState<AgentRun | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // 记录已自动打开过抽屉的 runId，避免用户关闭后被反复弹出
+  const autoOpenedRunId = useRef<string | null>(null);
 
   const { events, connected } = useAgentEventStream(currentRunId);
+
+  // 最近一条待审批提案
+  const pendingProposal = useMemo<Record<string, unknown> | null>(() => {
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index];
+      if (event.type !== 'approval_required') continue;
+      const proposal = event.payload?.proposal;
+      if (typeof proposal === 'object' && proposal !== null && !Array.isArray(proposal)) {
+        return proposal as Record<string, unknown>;
+      }
+    }
+    return null;
+  }, [events]);
 
   // 初始化：读取最近运行记录
   useEffect(() => {
@@ -140,6 +158,28 @@ export default function AgentConsolePage() {
     };
   }, [currentRunId]);
 
+  // 进入待审批且提案到达时自动打开一次抽屉
+  useEffect(() => {
+    if (run?.status !== 'awaiting_approval' || !pendingProposal || !currentRunId) return;
+    if (autoOpenedRunId.current === currentRunId) return;
+    autoOpenedRunId.current = currentRunId;
+    setDrawerOpen(true);
+  }, [run?.status, pendingProposal, currentRunId]);
+
+  // 审批后立即刷新运行状态（后续事件仍由 SSE 推送）
+  const refreshRun = useCallback(async () => {
+    if (!currentRunId) return;
+    try {
+      const data = await getRun(currentRunId);
+      setRun(data);
+      setRecentRuns((prev) =>
+        prev.map((item) => (item.run_id === data.id ? { ...item, status: data.status } : item)),
+      );
+    } catch {
+      // 刷新失败时交给轮询兜底，不打断主流程
+    }
+  }, [currentRunId]);
+
   const handleSubmit = async (goal: string) => {
     if (submitting) return;
     setSubmitting(true);
@@ -175,6 +215,7 @@ export default function AgentConsolePage() {
 
   const running = submitting || run?.status === 'running';
   const awaitingApproval = run?.status === 'awaiting_approval';
+  const pendingDetail = awaitingApproval && pendingProposal ? parseProposal(pendingProposal) : null;
 
   return (
     <div className="space-y-5">
@@ -337,38 +378,62 @@ export default function AgentConsolePage() {
           <div
             className={cn(
               'rounded-xl border p-4',
-              awaitingApproval
+              pendingDetail
                 ? 'border-amber-300 bg-amber-50'
                 : 'border-dashed border-slate-200 bg-white',
             )}
           >
             <div className="flex items-center gap-2">
               <ShieldAlert
-                className={cn('h-4 w-4', awaitingApproval ? 'text-amber-600' : 'text-slate-400')}
+                className={cn('h-4 w-4', pendingDetail ? 'text-amber-600' : 'text-slate-400')}
               />
               <h3
                 className={cn(
                   'text-sm font-semibold',
-                  awaitingApproval ? 'text-amber-700' : 'text-slate-600',
+                  pendingDetail ? 'text-amber-700' : 'text-slate-600',
                 )}
               >
                 待审批提示
               </h3>
             </div>
-            <p
-              className={cn(
-                'mt-2 text-xs leading-relaxed',
-                awaitingApproval ? 'text-amber-700' : 'text-slate-400',
-              )}
-            >
-              {awaitingApproval
-                ? '当前运行有待审批提案，可在中间时间轴查看调价详情。'
-                : '暂无待审批提案。'}
-            </p>
-            <p className="mt-1 text-[11px] text-slate-400">审批抽屉将在后续版本接入。</p>
+            {pendingDetail ? (
+              <>
+                <div className="mt-2 space-y-1 text-xs text-amber-700">
+                  <p className="font-medium">
+                    {pendingDetail.roomType} · {pendingDetail.date}
+                  </p>
+                  <p className="tabular-nums">
+                    {formatPrice(pendingDetail.currentPrice)} →{' '}
+                    {formatPrice(pendingDetail.nextPrice)}
+                    <span className="ml-1.5 text-amber-600">
+                      （{formatPercent(pendingDetail.percent)}）
+                    </span>
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="mt-3 w-full bg-amber-600 text-white hover:bg-amber-700"
+                  onClick={() => setDrawerOpen(true)}
+                >
+                  立即审批
+                </Button>
+              </>
+            ) : (
+              <p className="mt-2 text-xs leading-relaxed text-slate-400">暂无待审批提案</p>
+            )}
           </div>
         </aside>
       </div>
+
+      {currentRunId && (
+        <ApprovalDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          runId={currentRunId}
+          proposal={pendingProposal}
+          onApproved={refreshRun}
+        />
+      )}
     </div>
   );
 }
