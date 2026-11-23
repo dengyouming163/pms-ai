@@ -24,12 +24,14 @@ import {
   Sparkles,
   MapPin,
   Image,
+  Bot,
 } from 'lucide-react';
 import { useStore } from '@/lib/context/store-context';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useSidebar } from '@/lib/context/sidebar-context';
 
 const menuItems = [
+  { href: '/agent-console', icon: Bot, label: 'AI 协作台', permission: '' },
   { href: '/rooms', icon: BedDouble, label: '房态管理', permission: 'rooms:view' },
   { href: '/orders', icon: ClipboardList, label: '订单管理', permission: 'orders:view' },
   { href: '/pricing-center', icon: DollarSign, label: '定价中心', permission: 'pricing:view' },
