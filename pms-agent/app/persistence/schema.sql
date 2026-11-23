@@ -37,9 +37,12 @@ CREATE TABLE IF NOT EXISTS agent.agent_events (
     UNIQUE (run_id, seq)
 );
 
--- 审批单（Task 9 补索引；本任务先建表）
+-- 审批单
+-- proposal_id：ON CONFLICT 幂等 upsert 需要唯一约束作为冲突目标，
+-- 故新增该列并建 UNIQUE(run_id, proposal_id)：同一 run 下同一条提案重复审批只更新决策字段。
 CREATE TABLE IF NOT EXISTS agent.agent_approvals (
     run_id       TEXT NOT NULL,
+    proposal_id  TEXT NOT NULL DEFAULT '',
     proposal     JSONB NOT NULL DEFAULT '{}'::jsonb,
     status       TEXT NOT NULL DEFAULT 'pending',
     decided_by   TEXT,
@@ -49,6 +52,15 @@ CREATE TABLE IF NOT EXISTS agent.agent_approvals (
     result       JSONB,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- 兼容已建好的旧表（本任务前无 proposal_id 列）：幂等补列
+ALTER TABLE agent.agent_approvals ADD COLUMN IF NOT EXISTS proposal_id TEXT NOT NULL DEFAULT '';
+-- 幂等 upsert 的冲突目标（必须唯一，否则 ON CONFLICT 无法工作）
+CREATE UNIQUE INDEX IF NOT EXISTS agent_approvals_run_proposal_uq
+    ON agent.agent_approvals (run_id, proposal_id);
+-- 按 run_id 查审批单（SSE / 运行详情）
+CREATE INDEX IF NOT EXISTS agent_approvals_run_id_idx
+    ON agent.agent_approvals (run_id);
 
 -- 长期记忆
 CREATE TABLE IF NOT EXISTS agent.agent_memories (

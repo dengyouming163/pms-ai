@@ -19,7 +19,7 @@ from app.config import settings
 
 
 class ToolClient(ABC):
-    """只读工具客户端接口（Task 5 已实现的 5 个端点中的 4 个 revenue 相关）。"""
+    """工具客户端接口：4 个 revenue 只读工具 + price_adjust 写操作（Task 9）。"""
 
     @abstractmethod
     async def pricing_calendar(self, tenant: dict, date: str | None = None,
@@ -35,6 +35,11 @@ class ToolClient(ABC):
     @abstractmethod
     async def channel_performance(self, tenant: dict, date_from: str | None = None,
                                   date_to: str | None = None) -> dict: ...
+
+    async def price_adjust(self, tenant: dict, proposal: dict,
+                           approval_id: str | None = None) -> dict:
+        """执行层写操作（Task 9）。默认抛 NotImplementedError：假工具（鸭子类型）无需实现。"""
+        raise NotImplementedError
 
 
 class HttpToolClient(ToolClient):
@@ -109,3 +114,34 @@ class HttpToolClient(ToolClient):
         if date_to:
             params["to"] = date_to
         return await self._get("/channel-performance", params, tenant)
+
+    async def price_adjust(self, tenant, proposal, approval_id=None):
+        """执行调价写操作：POST /price-adjust。
+
+        body 严格对齐 pms-server 契约：
+        { storeId, roomTypeId, date, expectedCurrentPrice, nextPrice, reason, approvalId }。
+        409（价格已被改，期望值不符）不抛异常，返回 conflict 信封交由 execute 节点标记；
+        其它非 2xx / 超时 / 网络异常向上抛（由 execute 节点捕获转 failed）。写操作不重试。
+        """
+        params = proposal.get("params") or {}
+        body: dict[str, Any] = {
+            "storeId": tenant.get("store_id") or tenant.get("storeId"),
+            "roomTypeId": params.get("roomTypeId"),
+            "date": params.get("date"),
+            "expectedCurrentPrice": params.get("expectedCurrentPrice"),
+            "nextPrice": params.get("nextPrice"),
+            "reason": params.get("reason") or proposal.get("reason") or "agent price adjust",
+            # approval_id 缺失时用 proposal_id 兜底，保证执行层 approvalId 非空
+            "approvalId": approval_id or proposal.get("proposal_id"),
+        }
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                f"{self.base_url}/price-adjust",
+                json=body,
+                headers=self._headers(tenant),
+            )
+        if resp.status_code == 409:
+            # 执行层硬校验失败（价格已被改）：不抛、不重试，由上层转 conflict 终态
+            return {"ok": False, "error": "price_conflict", "conflict": True}
+        resp.raise_for_status()
+        return resp.json()

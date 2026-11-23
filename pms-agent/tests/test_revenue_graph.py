@@ -6,6 +6,8 @@
 """
 import json
 
+from langgraph.types import Command
+
 from app.graph.build import build_graph
 from app.graph.revenue import build_analysis_prompt, collect
 from app.providers.replay import ReplayProvider, prompt_hash
@@ -44,6 +46,9 @@ class FakeTools:
     async def channel_performance(self, tenant, date_from=None, date_to=None):
         return FAKE_CHANNEL
 
+    async def price_adjust(self, tenant, proposal, approval_id=None):
+        return {"ok": True, "data": {}}
+
 
 async def test_revenue_graph_produces_one_proposal_with_raise(tmp_path):
     tenant = {"merchant_id": "m1", "store_id": "s1"}
@@ -75,11 +80,16 @@ async def test_revenue_graph_produces_one_proposal_with_raise(tmp_path):
 
     provider = ReplayProvider(fixtures_dir=tmp_path)
     graph = build_graph(provider=provider, tools=fake_tools, model=MODEL)
+    config = {"configurable": {"thread_id": "thread-test-1"}}
 
-    # 3) 跑图：supervisor → revenue_collect → analyze → propose → request_approval → END
+    # 3) 跑图：有提案 → request_approval 中断挂起；resume approve 让 execute 跑完到 END
     final_state = await graph.ainvoke(
         {"goal": "明天青岩店要不要涨价？", "tenant": tenant, "run_id": "run-test-1"},
-        config={"configurable": {"thread_id": "thread-test-1"}},
+        config=config,
+    )
+    assert "__interrupt__" in final_state  # 有提案 → 挂起等待人审
+    final_state = await graph.ainvoke(
+        Command(resume={"decision": "approve", "reason": ""}), config=config,
     )
 
     # 路由正确
@@ -95,8 +105,9 @@ async def test_revenue_graph_produces_one_proposal_with_raise(tmp_path):
     assert len(proposals) == 1
     assert proposals[0]["after"]["price"] > proposals[0]["before"]["price"]
     assert proposals[0]["tool_name"] == "price-adjust"
-    # request_approval 占位不抛错，正常走到 END
-    assert final_state.get("approvals") is None or final_state["approvals"] == []
+    # 恢复后 approvals 记录决策，execute 执行成功
+    assert final_state["approvals"] == [{"decision": "approve", "reason": ""}]
+    assert final_state["execution_status"] == "succeeded"
 
 
 def _write_fixture(tmp_path, prompt: str, content: str, filename: str = "fixture.jsonl"):
@@ -128,6 +139,9 @@ class FakeToolsWithFailingOccupancy:
     async def channel_performance(self, tenant, date_from=None, date_to=None):
         return FAKE_CHANNEL
 
+    async def price_adjust(self, tenant, proposal, approval_id=None):
+        return {"ok": True, "data": {}}
+
 
 async def test_revenue_graph_survives_single_tool_failure(tmp_path):
     """工具失败路径：图不崩溃、跑完；evidence 含 4 条且失败那条带错误标识；proposals 仍产出。"""
@@ -147,10 +161,16 @@ async def test_revenue_graph_survives_single_tool_failure(tmp_path):
     provider = _write_fixture(tmp_path, prompt, json.dumps([suggestion], ensure_ascii=False),
                               filename="revenue_fail.jsonl")
     graph = build_graph(provider=provider, tools=fake_tools, model=MODEL)
+    config = {"configurable": {"thread_id": "thread-fail"}}
 
+    # 有提案 → 中断挂起；resume approve 让 execute 跑完到 END
     final_state = await graph.ainvoke(
         {"goal": "明天要不要涨价？", "tenant": tenant, "run_id": "run-fail"},
-        config={"configurable": {"thread_id": "thread-fail"}},
+        config=config,
+    )
+    assert "__interrupt__" in final_state
+    final_state = await graph.ainvoke(
+        Command(resume={"decision": "approve", "reason": ""}), config=config,
     )
 
     # 图正常跑完到 END

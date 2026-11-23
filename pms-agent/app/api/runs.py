@@ -21,6 +21,7 @@ from decimal import Decimal
 from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
+from langgraph.types import Command
 from pydantic import BaseModel
 from psycopg.types.json import Jsonb
 
@@ -105,8 +106,18 @@ def _update_run(conn, run_id: str, **fields) -> None:
 
 # ---- 图执行（后台） ----
 
+def _interrupt_payload(result: dict) -> dict | None:
+    """从 ainvoke 返回 dict 取首个中断的 payload（Interrupt.value）；无中断返回 None。"""
+    interrupts = result.get("__interrupt__") if isinstance(result, dict) else None
+    if not interrupts:
+        return None
+    first = interrupts[0]
+    value = getattr(first, "value", None)
+    return value if value is not None else first
+
+
 async def _execute_run(run_id: str, goal: str, tenant: dict, trace_id: str | None) -> None:
-    """后台执行一次图：成功→succeeded，超时/异常→failed。任何情况都更新状态并落事件。"""
+    """后台执行一次图：挂起→awaiting_approval，成功→succeeded，超时/异常→failed。"""
     try:
         async with get_checkpointer() as checkpointer:
             handler = TraceCallbackHandler(run_id, trace_id=trace_id)
@@ -122,9 +133,20 @@ async def _execute_run(run_id: str, goal: str, tenant: dict, trace_id: str | Non
                 graph.ainvoke(state, config={"configurable": {"thread_id": run_id}}),
                 timeout=RUN_TIMEOUT_SECONDS,
             )
-            route = result.get("route")
-            final = result.get("final")
+            # 中断挂起：图在 request_approval 等待人审，不标 succeeded；
+            # awaiting_approval 非终态（不在 TERMINAL_STATUSES），SSE 流继续等待 approve 后续事件。
+            interrupt_payload = _interrupt_payload(result)
+            route = None if interrupt_payload is not None else result.get("route")
+            final = None if interrupt_payload is not None else result.get("final")
         with get_conn() as conn:
+            if interrupt_payload is not None:
+                _update_run(conn, run_id, status="awaiting_approval")
+                append_event(
+                    conn, run_id, node="revenue_request_approval",
+                    type="approval_required", payload=interrupt_payload,
+                    trace_id=trace_id,
+                )
+                return
             _update_run(conn, run_id, status="succeeded", route=route, ended_at=now_utc())
             append_event(
                 conn, run_id, node="run", type="run_succeeded",
@@ -141,6 +163,67 @@ async def _execute_run(run_id: str, goal: str, tenant: dict, trace_id: str | Non
             )
     except Exception as exc:
         logger.exception("run 执行失败 run_id=%s", run_id)
+        with get_conn() as conn:
+            _update_run(conn, run_id, status="failed", ended_at=now_utc())
+            append_event(
+                conn, run_id, node="run", type="run_failed",
+                payload={"error": repr(exc)}, trace_id=trace_id,
+            )
+
+
+async def resume_run(run_id: str, resume_payload: dict, trace_id: str | None) -> None:
+    """恢复挂起的图（人审决策后由 approvals 端点后台调用），并终结 run。
+
+    - Command(resume=resume_payload) 让挂起的 request_approval 节点重新执行、interrupt 返回该 payload。
+    - result["execution_status"]：conflict/rejected/failed 对应终态，其余视为 succeeded。
+    - 事件落 executions 与 final；异常/超时按 _execute_run 风格置 failed。
+    """
+    try:
+        async with get_checkpointer() as checkpointer:
+            handler = TraceCallbackHandler(run_id, trace_id=trace_id)
+            graph = build_graph(checkpointer=checkpointer, callbacks=[handler])
+            result = await asyncio.wait_for(
+                graph.ainvoke(
+                    Command(resume=resume_payload),
+                    config={"configurable": {"thread_id": run_id}},
+                ),
+                timeout=RUN_TIMEOUT_SECONDS,
+            )
+            exec_status = result.get("execution_status")
+            if exec_status not in ("conflict", "rejected", "failed"):
+                exec_status = "succeeded"
+            executions = result.get("executions") or []
+            final = result.get("final")
+        event_type = {
+            "rejected": "run_rejected",
+            "failed": "run_failed",
+            "conflict": "run_failed",
+        }.get(exec_status, "run_succeeded")
+        payload: dict = {
+            "execution_status": exec_status,
+            "executions": executions,
+            "final": final,
+        }
+        if exec_status in ("failed", "conflict"):
+            payload["error"] = (
+                "price_conflict" if exec_status == "conflict" else "execution_failed"
+            )
+        with get_conn() as conn:
+            _update_run(conn, run_id, status=exec_status, ended_at=now_utc())
+            append_event(
+                conn, run_id, node="run", type=event_type,
+                payload=payload, trace_id=trace_id,
+            )
+    except asyncio.TimeoutError:
+        logger.error("run 恢复超时（%ss） run_id=%s", RUN_TIMEOUT_SECONDS, run_id)
+        with get_conn() as conn:
+            _update_run(conn, run_id, status="failed", ended_at=now_utc())
+            append_event(
+                conn, run_id, node="run", type="run_failed",
+                payload={"error": "run_timeout"}, trace_id=trace_id,
+            )
+    except Exception as exc:
+        logger.exception("run 恢复失败 run_id=%s", run_id)
         with get_conn() as conn:
             _update_run(conn, run_id, status="failed", ended_at=now_utc())
             append_event(
@@ -226,4 +309,4 @@ async def _event_stream(run_id: str, after: int):
             await asyncio.sleep(SSE_POLL_INTERVAL_SECONDS)
 
 
-__all__ = ["router"]
+__all__ = ["router", "resume_run"]

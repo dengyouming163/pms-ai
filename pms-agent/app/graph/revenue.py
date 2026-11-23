@@ -1,9 +1,10 @@
-"""revenue 子图：collect → analyze → propose → request_approval。
+"""revenue 子图：collect → analyze → propose → request_approval → execute。
 
 - collect: 并发调 4 个只读工具，结果写入 evidence（可注入 tools，测试用假工具）。
 - analyze: 用 provider 生成结构化建议；prompt 由 evidence 确定性构造（无随机/时间戳）。
-- propose: 每条建议生成一条待审批 proposal，写入 proposals。
-- request_approval: Task 7 占位，不调用 interrupt（Task 9 接通）。
+- propose: 每条建议生成一条待审批 proposal，写入 proposals（含执行层必需的 date/expectedCurrentPrice）。
+- request_approval: 有提案时 interrupt 挂起等待人审；无提案直通 END。
+- execute_approved: 恢复后执行被批准的调价（approve→调 price_adjust；reject→跳过；conflict→标记冲突）。
 """
 from __future__ import annotations
 
@@ -11,6 +12,8 @@ import asyncio
 import json
 import logging
 from typing import Any
+
+from langgraph.types import interrupt
 
 from app.state import AgentState
 
@@ -130,11 +133,24 @@ async def analyze(state: AgentState, *, provider, model: str) -> dict:
     return {"analysis": suggestions}
 
 
+def _calendar_date(evidence: list[dict[str, Any]]) -> str | None:
+    """从 pricing-calendar 证据取目标日期（执行层调价必需，格式 YYYY-MM-DD）。"""
+    for item in evidence:
+        if item.get("tool") != "pricing-calendar":
+            continue
+        data = (item.get("payload") or {}).get("data") or {}
+        return data.get("date")
+    return None
+
+
 def propose(state: AgentState) -> dict:
     """对每条建议生成 proposal，追加到 state['proposals']。"""
     analysis = state.get("analysis") or []
     run_id = state.get("run_id") or "run"
-    evidence_refs = [e.get("payload_ref") for e in (state.get("evidence") or [])]
+    evidence = list(state.get("evidence") or [])
+    evidence_refs = [e.get("payload_ref") for e in evidence]
+    # 执行层（price-adjust）硬校验需要 date 与 expectedCurrentPrice，propose 时补齐
+    date = _calendar_date(evidence)
 
     proposals: list[dict[str, Any]] = []
     for i, s in enumerate(analysis):
@@ -147,6 +163,8 @@ def propose(state: AgentState) -> dict:
             "tool_name": "price-adjust",
             "params": {
                 "roomTypeId": room_type_id,
+                "date": date,
+                "expectedCurrentPrice": current_price,
                 "nextPrice": suggested_price,
                 "reason": s.get("reason"),
             },
@@ -161,10 +179,77 @@ def propose(state: AgentState) -> dict:
 
 
 async def request_approval(state: AgentState) -> dict:
-    """Task 7 占位：读取 proposals 但不调用 interrupt。
+    """有提案时 interrupt 挂起等待人审；无提案则直通 END。
 
-    TODO: Task 9 接入 interrupt({...}) 实现人工审批中断与恢复；
-    届时用 checkpointer（MemorySaver / Postgres）持久化，approve 端点恢复执行。
+    - interrupt payload: {"type":"approval_required","proposal": proposals[0]}，
+      ainvoke 返回的 state 会带 "__interrupt__" 键（runs.py 据此标记 awaiting_approval）。
+    - 恢复后 interrupt(...) 的返回值即 approve 端点 Command(resume=...) 传入的决策 dict
+      （{decision, reason, approval_id}），写入 state["approvals"] 供 execute_approved 消费。
+    - 无提案：不 interrupt，返回 {"approvals": []}，让无建议的运行正常结束
+      （避免 test_analyze_handles_invalid_model_output 这类无提案运行被无意义挂起）。
     """
-    _ = state.get("proposals")
-    return {}
+    proposals = state.get("proposals") or []
+    if not proposals:
+        return {"approvals": []}
+    decision = interrupt({
+        "type": "approval_required",
+        "proposal": proposals[0],
+    })
+    return {"approvals": [decision]}
+
+
+async def execute_approved(state: AgentState, *, tools) -> dict:
+    """执行被批准的调价提案（恢复后由 revenue_execute 节点调用）。
+
+    - 无 approval → 视为无提案，直接 succeeded（不调工具）。
+    - decision != "approve" → rejected，绝不调工具。
+    - decision == "approve" → 对首条 proposal 调 tools.price_adjust(tenant, proposal, approval_id)：
+      · 返回 conflict → execution_status="conflict"（不重试）。
+      · 返回 ok → "succeeded"；其它 → "failed"。
+      · 任何异常被捕获 → "failed"（不让图崩）。
+    """
+    approvals = state.get("approvals") or []
+    if not approvals:
+        return {"execution_status": "succeeded", "final": "无提案，跳过执行"}
+
+    approval = approvals[-1] or {}
+    if approval.get("decision") != "approve":
+        reason = approval.get("reason") or ""
+        return {
+            "execution_status": "rejected",
+            "final": f"提案已驳回：{reason}",
+        }
+
+    proposal = (state.get("proposals") or [{}])[0]
+    tenant = state.get("tenant") or {}
+    try:
+        result = await tools.price_adjust(
+            tenant, proposal, approval_id=approval.get("approval_id"),
+        )
+    except Exception as exc:
+        logger.warning("revenue 调价执行失败：%r", exc)
+        return {
+            "execution_status": "failed",
+            "executions": [{
+                "status": "failed",
+                "proposal_id": proposal.get("proposal_id"),
+                "error": repr(exc),
+            }],
+            "final": f"调价执行失败：{exc!r}",
+        }
+
+    if isinstance(result, dict) and (result.get("conflict") or result.get("error") == "price_conflict"):
+        status = "conflict"
+    elif isinstance(result, dict) and result.get("ok"):
+        status = "succeeded"
+    else:
+        status = "failed"
+    return {
+        "execution_status": status,
+        "executions": [{
+            "status": status,
+            "proposal_id": proposal.get("proposal_id"),
+            "result": result,
+        }],
+        "final": "调价已执行" if status == "succeeded" else "调价执行未成功",
+    }

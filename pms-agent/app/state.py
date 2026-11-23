@@ -27,7 +27,11 @@ class AgentState(TypedDict, total=False):
     analysis: list[dict[str, Any]]
     # 待审批提案列表：[{ proposal_id, tool_name, params, before, after, ... }]
     proposals: list[dict[str, Any]]
-    # 审批记录
-    approvals: list[dict[str, Any]]
+    # 审批记录（恢复时 interrupt 返回的决策 dict：{decision, reason, approval_id}）
+    approvals: list[Any]
+    # 执行结果：[{ status: succeeded/conflict/failed, proposal_id, result/error }]（execute 节点写入）
+    executions: list[dict[str, Any]]
+    # 执行状态：succeeded / rejected / conflict / failed（approve 端点据此定 run 终态）
+    execution_status: str | None
     # 最终对用户的回复
     final: str | None

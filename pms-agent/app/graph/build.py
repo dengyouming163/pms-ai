@@ -1,7 +1,7 @@
 """组装 LangGraph 主图：supervisor → 按 route 分派 → revenue 子图 → END。
 
 依赖（provider / tools / model）通过 build_graph 注入，测试可替换为假工具 + 回放 provider。
-checkpointer 用 MemorySaver（内存），Task 9 接 interrupt；Task 8/9 再换 Postgres checkpointer。
+checkpointer 默认 MemorySaver（测试用），生产传入 Postgres checkpointer 以支持 interrupt 中断/恢复。
 """
 from __future__ import annotations
 
@@ -41,8 +41,8 @@ def build_graph(provider=None, tools=None, model: str | None = None,
                 callbacks: list | None = None):
     """工厂：构造并编译主图。测试注入假 provider/tools；生产缺省用回放 + HttpToolClient。
 
-    - checkpointer：默认 MemorySaver（内存）；Task 9 可传入 PostgresSaver 替换。
-    - callbacks：默认空列表；Task 8 可传入 trace callback 等。
+    - checkpointer：默认 MemorySaver（内存）；生产传入 Postgres saver 以支持中断/恢复。
+    - callbacks：默认空列表；传入 trace callback 等。
       注意：langgraph 1.2.24 的 compile() 不接受 callbacks 参数，故通过 Runnable.with_config
       挂载（ainvoke 时生效）。callbacks 为空时不包装，行为与原先完全一致。
     """
@@ -59,6 +59,7 @@ def build_graph(provider=None, tools=None, model: str | None = None,
     workflow.add_node("revenue_analyze", _bind_async(revenue.analyze, provider=provider, model=model))
     workflow.add_node("revenue_propose", revenue.propose)
     workflow.add_node("revenue_request_approval", _bind_async(revenue.request_approval))
+    workflow.add_node("revenue_execute", _bind_async(revenue.execute_approved, tools=tools))
     workflow.add_node("synthesize", synthesize_stub)
 
     workflow.set_entry_point("supervisor")
@@ -76,16 +77,17 @@ def build_graph(provider=None, tools=None, model: str | None = None,
         },
     )
 
-    # revenue 子图线性连接 → END
+    # revenue 子图线性连接 → END（request_approval 中断挂起，恢复后进 execute 执行）
     workflow.add_edge("revenue_collect", "revenue_analyze")
     workflow.add_edge("revenue_analyze", "revenue_propose")
     workflow.add_edge("revenue_propose", "revenue_request_approval")
-    workflow.add_edge("revenue_request_approval", END)
+    workflow.add_edge("revenue_request_approval", "revenue_execute")
+    workflow.add_edge("revenue_execute", END)
 
     # 其它路由经占位节点 → END
     workflow.add_edge("synthesize", END)
 
-    # 编译：带 checkpointer（默认 MemorySaver；Task 9 接 interrupt 所需，可换 PostgresSaver）
+    # 编译：带 checkpointer（默认 MemorySaver；生产 Postgres saver，interrupt 中断/恢复必需）
     graph = workflow.compile(checkpointer=checkpointer)
     if callbacks:
         # langgraph 1.2.24 compile() 不接受 callbacks，经 with_config 挂载到 ainvoke
