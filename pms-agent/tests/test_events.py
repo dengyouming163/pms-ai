@@ -181,6 +181,28 @@ def test_trace_callback_emits_node_events_to_injected_sink():
         assert c["trace_id"] == "trace-1"
 
 
+def test_trace_callback_ignores_graph_interrupt():
+    """interrupt() 挂起会以 GraphInterrupt 结束节点，属正常控制流，不应记为错误。"""
+    calls: list[dict] = []
+
+    def sink(**kwargs):
+        calls.append(kwargs)
+
+    class GraphInterrupt(Exception):
+        pass
+
+    h = TraceCallbackHandler("run-i", sink=sink)
+    rid = uuid.uuid4()
+    h.on_chain_start({"name": "revenue_request_approval"}, {}, run_id=rid,
+                     name="revenue_request_approval")
+    h.on_chain_error(GraphInterrupt({"type": "approval_required"}), run_id=rid,
+                     name="revenue_request_approval")
+
+    types = [c["type"] for c in calls]
+    assert "node_error" not in types
+    assert "trace_error" not in types
+
+
 def test_trace_callback_emits_tool_and_llm_events():
     calls: list[dict] = []
 

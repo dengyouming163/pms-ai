@@ -55,6 +55,14 @@ def _short(value: Any, limit: int = 500) -> str:
     return text[:limit]
 
 
+def _is_interrupt(error: Any) -> bool:
+    """判断是否为 LangGraph 的人审挂起信号（正常控制流，不是错误）。
+
+    按类名判断而非 isinstance，避免不同 langgraph 版本的模块路径差异。
+    """
+    return type(error).__name__ in {"GraphInterrupt", "Interrupt"}
+
+
 class TraceCallbackHandler(BaseCallbackHandler):
     """把图执行过程落库到 agent_events；异常不影响主流程。"""
 
@@ -134,6 +142,11 @@ class TraceCallbackHandler(BaseCallbackHandler):
                    started_at=started_at, ended_at=now_utc())
 
     def on_chain_error(self, error, *, run_id, **kwargs):
+        # interrupt() 挂起时 LangGraph 会以 GraphInterrupt 作为异常结束该节点，
+        # 这是人审流程的正常控制流，不应记为错误污染时间轴。
+        if _is_interrupt(error):
+            self._starts.pop(str(run_id), None)
+            return
         node = self._pop_node(run_id, kwargs)
         self._emit("node_error", node,
                    payload={"node": node, "error": _short(error)}, ended_at=now_utc())
