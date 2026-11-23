@@ -10,10 +10,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 from typing import Any, Callable
 
 from langchain_core.callbacks import BaseCallbackHandler
+
+from app.runtime.utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +44,6 @@ def _default_sink(
             started_at=started_at, ended_at=ended_at,
             tokens_in=tokens_in, tokens_out=tokens_out, trace_id=trace_id,
         )
-
-
-def _now():
-    return datetime.now(timezone.utc)
 
 
 def _short(value: Any, limit: int = 500) -> str:
@@ -126,7 +123,7 @@ class TraceCallbackHandler(BaseCallbackHandler):
 
     def on_chain_start(self, serialized, inputs, *, run_id, **kwargs):
         node = self._node_name(serialized, kwargs)
-        started_at = _now()
+        started_at = now_utc()
         self._starts[str(run_id)] = {"node": node, "started_at": started_at}
         self._emit("node_start", node, payload={"node": node}, started_at=started_at)
 
@@ -134,12 +131,12 @@ class TraceCallbackHandler(BaseCallbackHandler):
         node = self._pop_node(run_id, kwargs)
         started_at = self._starts.get(str(run_id), {}).get("started_at")
         self._emit("node_end", node, payload={"node": node},
-                   started_at=started_at, ended_at=_now())
+                   started_at=started_at, ended_at=now_utc())
 
     def on_chain_error(self, error, *, run_id, **kwargs):
         node = self._pop_node(run_id, kwargs)
         self._emit("node_error", node,
-                   payload={"node": node, "error": _short(error)}, ended_at=_now())
+                   payload={"node": node, "error": _short(error)}, ended_at=now_utc())
 
     def _pop_node(self, run_id, kwargs) -> str | None:
         info = self._starts.pop(str(run_id), None)
@@ -151,30 +148,30 @@ class TraceCallbackHandler(BaseCallbackHandler):
 
     def on_tool_start(self, serialized, input_str, *, run_id, **kwargs):
         node = self._node_name(serialized, kwargs)
-        self._starts[str(run_id)] = {"node": node, "started_at": _now()}
+        self._starts[str(run_id)] = {"node": node, "started_at": now_utc()}
         self._emit("tool_start", node,
                    payload={"tool": node, "input": _short(input_str)},
-                   started_at=_now())
+                   started_at=now_utc())
 
     def on_tool_end(self, output, *, run_id, **kwargs):
         info = self._starts.pop(str(run_id), {})
         node = info.get("node") or self._node_name(None, kwargs)
         self._emit("tool_end", node,
                    payload={"tool": node, "output": _short(output)},
-                   started_at=info.get("started_at"), ended_at=_now())
+                   started_at=info.get("started_at"), ended_at=now_utc())
 
     def on_tool_error(self, error, *, run_id, **kwargs):
         info = self._starts.pop(str(run_id), {})
         node = info.get("node") or self._node_name(None, kwargs)
         self._emit("tool_error", node,
-                   payload={"tool": node, "error": _short(error)}, ended_at=_now())
+                   payload={"tool": node, "error": _short(error)}, ended_at=now_utc())
 
     # ---- 模型 ----
 
     def on_llm_start(self, serialized, prompts, *, run_id, **kwargs):
         node = self._node_name(serialized, kwargs)
-        self._starts[str(run_id)] = {"node": node, "started_at": _now()}
-        self._emit("llm_start", node, payload={"model": node}, started_at=_now())
+        self._starts[str(run_id)] = {"node": node, "started_at": now_utc()}
+        self._emit("llm_start", node, payload={"model": node}, started_at=now_utc())
 
     def on_llm_end(self, response, *, run_id, **kwargs):
         info = self._starts.pop(str(run_id), {})
@@ -182,14 +179,14 @@ class TraceCallbackHandler(BaseCallbackHandler):
         tokens_in, tokens_out = self._extract_tokens(response)
         self._emit("llm_end", node,
                    payload={"model": node, "tokens_in": tokens_in, "tokens_out": tokens_out},
-                   started_at=info.get("started_at"), ended_at=_now(),
+                   started_at=info.get("started_at"), ended_at=now_utc(),
                    tokens_in=tokens_in, tokens_out=tokens_out)
 
     def on_llm_error(self, error, *, run_id, **kwargs):
         info = self._starts.pop(str(run_id), {})
         node = info.get("node") or self._node_name(None, kwargs)
         self._emit("llm_error", node,
-                   payload={"model": node, "error": _short(error)}, ended_at=_now())
+                   payload={"model": node, "error": _short(error)}, ended_at=now_utc())
 
 
 __all__ = ["TraceCallbackHandler"]

@@ -11,6 +11,9 @@
 import uuid
 from contextlib import contextmanager
 
+import pytest
+from psycopg.errors import UniqueViolation
+
 from app.persistence.events import append_event, list_events, next_seq
 from app.runtime.trace import TraceCallbackHandler
 
@@ -23,20 +26,30 @@ class _Desc:
 
 
 class FakeCursor:
-    """模拟 psycopg 游标：fetchone/fetchall 返回 dict（dict_row 行工厂行为）。"""
+    """模拟 psycopg 游标：fetchone/fetchall 返回 dict（dict_row 行工厂行为）。
 
-    def __init__(self, fetchone_result=None, fetchall_result=None):
+    insert_failures：前 N 次 INSERT 执行抛 UniqueViolation，模拟并发 seq 冲突；
+    之后的 INSERT 成功。设为极大值可模拟「一直冲突」。
+    """
+
+    def __init__(self, fetchone_result=None, fetchall_result=None, insert_failures: int = 0):
         self.fetchone_result = fetchone_result
         self.fetchall_result = fetchall_result if fetchall_result is not None else []
+        self.insert_failures = insert_failures
+        self.insert_attempts = 0  # 已尝试的 INSERT 次数（含失败）
         # 与 list_events 的 SELECT 列对齐
         self.description = [_Desc(n) for n in [
             "seq", "node", "type", "payload", "started_at", "ended_at",
             "tokens_in", "tokens_out", "trace_id", "created_at",
         ]]
-        self.executes: list[tuple] = []  # 记录每次 (sql, params)
+        self.executes: list[tuple] = []  # 记录每次 (sql, params)，失败的也记录
 
     def execute(self, sql: str, params=None):
         self.executes.append((sql, params))
+        if "INSERT" in sql.upper():
+            self.insert_attempts += 1
+            if self.insert_attempts <= self.insert_failures:
+                raise UniqueViolation()
 
     def fetchone(self):
         return self.fetchone_result
@@ -92,6 +105,31 @@ def test_append_event_first_seq_when_no_rows():
     seq = append_event(FakeConn(cur), "run-new", node="run", type="run_started")
     assert seq == 1
     assert cur.executes[1][1][1] == 1
+
+
+def test_append_event_retries_multiple_times_before_success():
+    """≥3 并发同 run 写时，旧实现只重试一次（range(2)）会直接抛错。
+    新实现须有界重试多次：前 2 次 INSERT 冲突、第 3 次成功，最终返回正确 seq。"""
+    cur = FakeCursor(fetchone_result={"max_seq": 5}, insert_failures=2)
+
+    seq = append_event(FakeConn(cur), "run-1", node="run", type="run_started")
+
+    assert seq == 6
+    # 共尝试了 3 次 INSERT（前 2 次冲突、第 3 次成功）
+    assert cur.insert_attempts == 3
+    # 最后一次 INSERT 的 seq 参数应为 6
+    assert cur.executes[-1][1][1] == 6
+
+
+def test_append_event_raises_after_exhausting_retries():
+    """冲突持续到耗尽重试次数时，必须向上抛异常（不得静默成功，也不得死循环）。"""
+    cur = FakeCursor(fetchone_result={"max_seq": 5}, insert_failures=10**9)
+
+    with pytest.raises(UniqueViolation):
+        append_event(FakeConn(cur), "run-1", node="run", type="run_started")
+
+    # 重试有界：INSERT 尝试次数应等于最大重试次数（5），而非无限循环
+    assert cur.insert_attempts == 5
 
 
 def test_list_events_returns_dict_rows_unchanged():

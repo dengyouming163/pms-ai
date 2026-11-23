@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 
+# TODO(M2): 引入 psycopg_pool 连接池或用 asyncio.to_thread 包装同步调用，避免同步 DB
+# 阻塞事件循环。M1 低并发下每请求建/关一条连接可接受，但演示压测时需优化。
 @contextmanager
 def get_conn():
     """获取一条同步 psycopg 连接，退出时自动提交/回滚并关闭。"""
