@@ -15,12 +15,31 @@ describe('云栖山舍演示种子数据', () => {
     );
   });
 
-  it('覆盖最近 90 天订单与价格日历', () => {
+  it('覆盖最近 90 天订单与历史 90 天 + 未来 30 天价格日历', () => {
     expect(plan.days).toHaveLength(90);
     expect(plan.orders.length).toBeGreaterThan(0);
-    // 每天每个门店一条价格日历
-    expect(plan.pricingCalendar).toHaveLength(90 * 3);
+    // 每天每个门店一条价格日历：历史 90 天 + 未来 30 天
+    expect(plan.pricingCalendar).toHaveLength((90 + 30) * 3);
     expect(plan.channelOrders.length).toBeGreaterThan(0);
+  });
+
+  it('价格日历覆盖「明天」，且每个门店都有房型报价', () => {
+    // plan.days 的最后一天即锚点日（上海今天），次日为「明天」
+    const anchor = plan.days[plan.days.length - 1].date;
+    const next = new Date(`${anchor}T00:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    const tomorrow = next.toISOString().slice(0, 10);
+
+    const tomorrowRows = plan.pricingCalendar.filter((c) => c.date === tomorrow);
+    expect(tomorrowRows).toHaveLength(plan.stores.length);
+    expect(
+      tomorrowRows.every((c) => c.roomTypes.length > 0 && c.roomTypes.every((rt) => rt.price > 0)),
+    ).toBe(true);
+  });
+
+  it('价格日历的最大日期超出订单窗口（覆盖未来 30 天）', () => {
+    const maxDate = (rows: Array<{ date: string }>) => rows.map((r) => r.date).sort()[rows.length - 1];
+    expect(maxDate(plan.pricingCalendar) > maxDate(plan.days)).toBe(true);
   });
 
   it('周末入住率高于工作日', () => {

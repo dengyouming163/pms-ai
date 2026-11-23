@@ -15,8 +15,18 @@ import { resolve } from 'node:path';
 const MERCHANT_ID = 'demo-yunqi';
 const SEED = 20261121;
 const TOTAL_DAYS = 90;
-/** 演示窗口的锚点日：最近 90 天（含当天）的订单与价格日历 */
-const ANCHOR_DATE = '2026-11-21';
+/** 价格日历在历史窗口之外向未来延伸的天数，覆盖「明天」及后续演示 */
+const FUTURE_DAYS = 30;
+
+/** 上海时区（UTC+8）的今天，格式 YYYY-MM-DD */
+function todayInShanghai(): string {
+  const now = new Date();
+  const sh = new Date(now.getTime() + 8 * 3600 * 1000);
+  return sh.toISOString().slice(0, 10);
+}
+
+/** 演示窗口的锚点日：最近 90 天（含当天）的订单，以及历史 + 未来 30 天的价格日历 */
+const ANCHOR_DATE = todayInShanghai();
 const DEMO_PHONE = '13800000000';
 const DEMO_PASSWORD = 'Demo123456';
 
@@ -457,6 +467,9 @@ export function buildSeedPlan(): SeedPlan {
 
   const windowStart = addDays(ANCHOR_DATE, -(TOTAL_DAYS - 1));
   const dates: string[] = Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(windowStart, i));
+  // 价格日历覆盖历史 90 天 + 未来 30 天（未来日期不生成订单，仅保证「明天」等演示可查询到房价）
+  const futureDates: string[] = Array.from({ length: FUTURE_DAYS }, (_, i) => addDays(ANCHOR_DATE, i + 1));
+  const calendarDates: string[] = [...dates, ...futureDates];
 
   const channels: SeedChannel[] = CHANNEL_META.map((c) => ({
     id: c.id,
@@ -679,15 +692,16 @@ export function buildSeedPlan(): SeedPlan {
     minPrice: rt.minPrice,
   }));
 
-  // 90 天价格日历
+  // 价格日历：历史 90 天 + 未来 30 天
   const pricingCalendar: SeedCalendar[] = [];
   for (const store of roomsFile.stores) {
     const typeList = roomTypes.filter((rt) => rt.storeId === store.id);
-    for (let dayIndex = 0; dayIndex < TOTAL_DAYS; dayIndex++) {
-      const date = dates[dayIndex];
+    for (let dayIndex = 0; dayIndex < calendarDates.length; dayIndex++) {
+      const date = calendarDates[dayIndex];
       const weekend = isWeekendDate(date);
       const holiday = isHolidayDate(date);
-      const occupied = storeOccupied[store.id][dayIndex] ?? 0;
+      // 未来日期没有历史入住数据，按全空处理
+      const occupied = dayIndex < TOTAL_DAYS ? (storeOccupied[store.id][dayIndex] ?? 0) : 0;
       pricingCalendar.push({
         id: `pc-yq-${store.id}-${date}`,
         storeId: store.id,
