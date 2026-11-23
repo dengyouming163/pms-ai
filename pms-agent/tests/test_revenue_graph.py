@@ -257,7 +257,8 @@ def test_analysis_prompt_ignores_volatile_fields():
     assert build_analysis_prompt(a) == build_analysis_prompt(b)
 
 
-def _channel_evidence(date_from="2026-10-25", date_to="2026-11-23", order_count=48):
+def _channel_evidence(date_from="2026-10-25", date_to="2026-11-23", order_count=48,
+                      timeout_count=1):
     """构造 channel-performance 证据：from/to 是默认最近 30 天时间窗，跨天会变。"""
     return [{
         "source": "pms-server",
@@ -271,6 +272,7 @@ def _channel_evidence(date_from="2026-10-25", date_to="2026-11-23", order_count=
                 "to": date_to,
                 "orderCount": order_count,
                 "revenue": 14400,
+                "timeoutCount": timeout_count,
                 "items": [],
             },
         },
@@ -309,11 +311,46 @@ def test_analysis_prompt_ignores_competitor_last_crawled_at():
     assert build_analysis_prompt(a) == build_analysis_prompt(b)
 
 
+def test_analysis_prompt_ignores_channel_timeout_count():
+    """items[].timeoutCount 由「otaTimeout < now」判定，随墙上时钟漂移，不得影响 prompt。"""
+    a = _channel_evidence(timeout_count=1)
+    b = _channel_evidence(timeout_count=5)
+    assert build_analysis_prompt(a) == build_analysis_prompt(b)
+
+
 def test_analysis_prompt_changes_with_business_data():
     """业务数据（价格/入住率）变化必须反映到 prompt，避免过度归一化丢掉有效信息。"""
     a = _evidence_with(price=300, occupancy_rate=92)
     b = _evidence_with(price=360, occupancy_rate=75)
     assert build_analysis_prompt(a) != build_analysis_prompt(b)
+
+
+async def test_collect_queries_tomorrow_local_date():
+    """collect 必须按「明天」查询定价/房态/竞品，保证演示时目标日期在未来。"""
+    from app.runtime.utils import SHANGHAI_TZ, tomorrow_local
+    from datetime import datetime, timedelta
+
+    captured: dict[str, object] = {}
+
+    class RecordingTools(FakeTools):
+        async def pricing_calendar(self, tenant, date=None, room_type_id=None):
+            captured["pricing"] = date
+            return FAKE_PRICING
+
+        async def occupancy(self, tenant, date=None):
+            captured["occupancy"] = date
+            return FAKE_OCCUPANCY
+
+        async def competitor_prices(self, tenant, room_type_id=None, date=None):
+            captured["competitor"] = date
+            return FAKE_COMPETITOR
+
+    await collect({"tenant": {"merchant_id": "m1"}}, tools=RecordingTools())
+
+    expected = tomorrow_local()
+    assert captured == {"pricing": expected, "occupancy": expected, "competitor": expected}
+    # 交叉校验：确实是上海时区的明天（防止用了 UTC 日期）
+    assert expected == (datetime.now(SHANGHAI_TZ).date() + timedelta(days=1)).isoformat()
 
 
 async def test_collect_prompt_stable_across_volatile_mutation():

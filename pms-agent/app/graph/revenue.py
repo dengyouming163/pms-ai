@@ -15,6 +15,7 @@ from typing import Any
 
 from langgraph.types import interrupt
 
+from app.runtime.utils import tomorrow_local
 from app.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,8 @@ _VOLATILE_KEYS = {
     "from", "to",
     # competitor-prices 的爬取时间，每次新爬取即变
     "lastcrawledat", "last_crawled_at",
+    # channel-performance 的超时笔数由「otaTimeout < now」判定，随墙上时钟漂移
+    "timeoutcount", "timeout_count",
 }
 
 
@@ -101,12 +104,17 @@ def _summarize(tool_name: str, result: dict) -> str:
 # ====== 节点 ======
 
 async def collect(state: AgentState, *, tools) -> dict:
-    """并发调用 4 个工具，结果追加到 evidence。tools 可注入（测试用假工具）。"""
+    """并发调用 4 个工具，结果追加到 evidence。tools 可注入（测试用假工具）。
+
+    定价/房态/竞品统一按「上海时区明天」查询：收益决策需要提前一天定价，
+    且目标日期会随运行日推进，避免固定日期在演示时早于当前日而查不到数据。
+    """
     tenant = state.get("tenant") or {}
+    target_date = tomorrow_local()
     calls = [
-        ("pricing-calendar", tools.pricing_calendar(tenant)),
-        ("occupancy", tools.occupancy(tenant)),
-        ("competitor-prices", tools.competitor_prices(tenant)),
+        ("pricing-calendar", tools.pricing_calendar(tenant, date=target_date)),
+        ("occupancy", tools.occupancy(tenant, date=target_date)),
+        ("competitor-prices", tools.competitor_prices(tenant, date=target_date)),
         ("channel-performance", tools.channel_performance(tenant)),
     ]
     # gather 保持入参顺序，evidence 顺序确定 → prompt hash 稳定
