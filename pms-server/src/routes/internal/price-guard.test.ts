@@ -31,4 +31,24 @@ describe('checkPriceAdjustment', () => {
   it('拒绝与当前价相同', () => {
     expect(checkPriceAdjustment({ ...base, nextPrice: 480 }).ok).toBe(false);
   });
+
+  // 实现：deltaPct = Math.round(rawDeltaPct)，边界判断用未取整的原始幅度（避免 30.4% 漏放）
+  it('允许恰好 30% 的上调（边界通过）', () => {
+    const r = checkPriceAdjustment({ ...base, nextPrice: 624 }); // 480 +30% = 624
+    expect(r).toMatchObject({ ok: true, deltaPct: 30 });
+  });
+
+  it('拒绝下调超过 30%', () => {
+    const r = checkPriceAdjustment({ ...base, nextPrice: 300 }); // 480 -37.5%
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain('30%');
+  });
+
+  it('deltaPct 为整数百分比：480→528 = +10%', () => {
+    expect(checkPriceAdjustment({ ...base, nextPrice: 528 }).deltaPct).toBe(10);
+  });
+
+  it('deltaPct 非整数时四舍五入：480→500 ≈ +4.17% → 4', () => {
+    expect(checkPriceAdjustment({ ...base, nextPrice: 500 }).deltaPct).toBe(4);
+  });
 });

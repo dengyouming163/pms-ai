@@ -13,7 +13,7 @@ import { getTenantScope, tenantWhere } from '../../utils/tenant.js';
 import { checkPriceAdjustment } from '../../services/price-guard.js';
 
 /**
- * Agent 专用只读工具端点（挂载于 /api/internal/agent-tools/*）。
+ * Agent 工具端点（挂载于 /api/internal/agent-tools/*）：5 个只读 GET，加唯一经人审的写端点 POST /price-adjust（乐观并发 + 业务护栏）。
  *
  * 鉴权与脱敏由 index.ts 对 /api/internal/* 统一挂载的 internalAuthMiddleware +
  * dataMaskMiddleware 负责，本文件不重复实现。
@@ -408,6 +408,11 @@ tools.get('/finance-summary', async (c) => {
 // ====== POST /price-adjust —— 调价写入（乐观并发 + 业务护栏）======
 // 单次调价幅度上限（百分比）。暂为常量，后续可下沉为环境变量或租户级配置。
 const DEFAULT_MAX_DELTA_PCT = 30;
+// 房型未配置 minPrice 时，以 basePrice 乘该比例作为兜底底价（保守下限）。
+const MIN_PRICE_FALLBACK_RATIO = 0.5;
+
+/** 事务内权威价格校验失败时抛出：触发事务回滚，外层 catch 转 409 price_conflict。 */
+class PriceConflictError extends Error {}
 
 tools.post('/price-adjust', async (c) => {
   const started = Date.now();
@@ -430,10 +435,17 @@ tools.post('/price-adjust', async (c) => {
     if (!isValidDate(date)) {
       return c.json({ ok: false, error: 'date 格式非法，应为 YYYY-MM-DD', latency_ms: Date.now() - started }, 400);
     }
+    // 价格必须为整数（schema basePrice/minPrice/price 均为 integer）；缺省/null 也在此拦截
+    if (expectedCurrentPrice == null || nextPrice == null
+      || !Number.isInteger(Number(expectedCurrentPrice)) || !Number.isInteger(Number(nextPrice))) {
+      return c.json({ ok: false, error: 'expectedCurrentPrice/nextPrice 必须为整数', latency_ms: Date.now() - started }, 400);
+    }
     const expected = Number(expectedCurrentPrice);
     const next = Number(nextPrice);
-    if (!Number.isFinite(expected) || !Number.isFinite(next)) {
-      return c.json({ ok: false, error: 'expectedCurrentPrice/nextPrice 必须为数字', latency_ms: Date.now() - started }, 400);
+
+    // 防止带 X-Store-Id:A 却 body 写 B 的静默写错门店：scope 非通配时 body.storeId 必须一致
+    if (scope.storeId && scope.storeId !== '*' && storeId !== scope.storeId) {
+      return c.json({ ok: false, error: 'storeId 与请求门店上下文不一致', latency_ms: Date.now() - started }, 400);
     }
 
     // 2. 查询当前日历价格行（按租户隔离；scope.storeId 为 '*' 时用 body.storeId 精确定位日历行）
@@ -459,21 +471,24 @@ tools.post('/price-adjust', async (c) => {
     }
     const currentPrice = toNumber(item.price);
 
-    // 3. 乐观并发：当前价与调用方期望值不一致 → 409 price_conflict
+    // 3. 乐观并发预校验（快速失败；权威校验在事务内加行锁后重做，消除 TOCTOU 丢失更新）
     if (currentPrice !== expected) {
       return c.json({ ok: false, error: 'price_conflict', latency_ms: Date.now() - started }, 409);
     }
 
-    // 查房型取 minPrice / basePrice（按租户隔离）。
-    // minPrice 为 null 时回退 basePrice 的 50% 作为兜底底价（来源：房型表未配置最低价时的保守下限）。
+    // 查房型取 minPrice / basePrice（按租户隔离）；房型不存在 → 404，不静默回落 minPrice=0。
     const [roomType] = await db.select().from(pmsBuiRoomTypes)
       .where(and(
         ...tenantWhere(scope, pmsBuiRoomTypes),
         eq(pmsBuiRoomTypes.id, roomTypeId),
       ))
       .limit(1);
-    const basePrice = toNumber(roomType?.basePrice);
-    const minPrice = roomType?.minPrice != null ? toNumber(roomType.minPrice) : Math.round(basePrice * 0.5);
+    if (!roomType) {
+      return c.json({ ok: false, error: '房型不存在', latency_ms: Date.now() - started }, 404);
+    }
+    // minPrice 为 null 时回退 basePrice × MIN_PRICE_FALLBACK_RATIO 作为兜底底价（房型未配置最低价时的保守下限）
+    const basePrice = toNumber(roomType.basePrice);
+    const minPrice = roomType.minPrice != null ? toNumber(roomType.minPrice) : Math.round(basePrice * MIN_PRICE_FALLBACK_RATIO);
 
     // 4. 业务护栏校验，不通过 → 422
     const guard = checkPriceAdjustment({ currentPrice, nextPrice: next, minPrice, maxDeltaPct: DEFAULT_MAX_DELTA_PCT });
@@ -481,23 +496,41 @@ tools.post('/price-adjust', async (c) => {
       return c.json({ ok: false, error: guard.reason ?? '调价被护栏拒绝', latency_ms: Date.now() - started }, 422);
     }
 
-    // 5. 更新 roomTypes 中目标房型价格（整列回写 jsonb）。
-    // 乐观并发说明：步骤 3 已比对当前价，重复/并发调用会因 currentPrice 漂移命中 409；
-    // 顺序连调同一请求，第二次读到的已是新价 ≠ expected → 返回 price_conflict，满足演示要求。
-    const updatedItems = items.map((it) =>
-      String(it?.roomTypeId ?? '') === roomTypeId ? { ...it, price: next } : it,
-    );
-    await db.update(pmsBuiPricingCalendar)
-      .set({ roomTypes: updatedItems })
-      .where(eq(pmsBuiPricingCalendar.id, calendar.id));
+    // 5. 事务内对日历行加行锁（SELECT ... FOR UPDATE），重读价格做权威校验后写入：
+    //    并发请求在该行锁上串行，后到者读到先到者已改的价格 → 与 expected 不符 → 抛错回滚 → 409，
+    //    杜绝「读-比对-写」三条独立 await 导致的丢失更新。
+    const result = await db.transaction(async (tx) => {
+      const [locked] = await tx.select().from(pmsBuiPricingCalendar)
+        .where(eq(pmsBuiPricingCalendar.id, calendar.id))
+        .limit(1)
+        .for('update');
+      const lockedItems = (locked?.roomTypes ?? []) as PricingCalendarItem[];
+      const lockedPrice = toNumber(
+        lockedItems.find((it) => String(it?.roomTypeId ?? '') === roomTypeId)?.price,
+      );
+      // 权威校验：加锁后重读价格仍等于期望值才写入，否则回滚（外层转 409）
+      if (lockedPrice !== expected) {
+        throw new PriceConflictError();
+      }
+      const newItems = lockedItems.map((it) =>
+        String(it?.roomTypeId ?? '') === roomTypeId ? { ...it, price: next } : it,
+      );
+      await tx.update(pmsBuiPricingCalendar)
+        .set({ roomTypes: newItems, updatedAt: new Date() })
+        .where(eq(pmsBuiPricingCalendar.id, calendar.id));
+      return { before: lockedPrice, after: next, deltaPct: guard.deltaPct };
+    });
 
     // 6. 返回调价前后与幅度
     return c.json({
       ok: true,
-      data: { before: currentPrice, after: next, deltaPct: guard.deltaPct },
+      data: result,
       latency_ms: Date.now() - started,
     }, 200);
   } catch (err) {
+    if (err instanceof PriceConflictError) {
+      return c.json({ ok: false, error: 'price_conflict', latency_ms: Date.now() - started }, 409);
+    }
     console.error('[agent-tools] price-adjust 失败:', err);
     return c.json({ ok: false, error: '内部错误', latency_ms: Date.now() - started }, 500);
   }
