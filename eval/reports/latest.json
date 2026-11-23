@@ -1,6 +1,6 @@
 {
   "suite": "ota",
-  "generated_at": "2026-11-23T16:17:46",
+  "generated_at": "2026-11-23T16:29:13",
   "cases_sha256": "6e1177ffde34d641a27c5e11ef65a029fbe6764f88245dd7df0d8e6d5791da44",
   "fixtures_sha256": "20eb3c347ee2320b759f596c1b4aab9d89ef7f4753c27d93f0c1e247a3c8e0ca",
   "metrics": {
@@ -11,7 +11,7 @@
     "cost_cny": 0.0,
     "block_rate": 1.0,
     "approval_accuracy": 1.0,
-    "p95_latency_ms": 7.469999998647836
+    "p95_latency_ms": 5.8776999976544175
   },
   "results": [
     {
@@ -52,7 +52,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 7.469999998647836,
+      "latency_ms": 5.8776999976544175,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -92,7 +92,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.9131999999663094,
+      "latency_ms": 3.1208000000333413,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -132,7 +132,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.661200000147801,
+      "latency_ms": 3.442400000494672,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -172,7 +172,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.5700999995024176,
+      "latency_ms": 2.7415999975346494,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -212,7 +212,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.526399999624118,
+      "latency_ms": 2.8481999979703687,
       "success": true,
       "error": null,
       "has_forbid": false
@@ -252,7 +252,7 @@
       "steps": 3,
       "tokens": 0,
       "cost_cny": 0.0,
-      "latency_ms": 2.421499999400112,
+      "latency_ms": 2.5572000013198704,
       "success": true,
       "error": null,
       "has_forbid": false
