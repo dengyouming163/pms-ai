@@ -1,0 +1,384 @@
+{
+  "suite": "revenue",
+  "generated_at": "2026-11-23T15:59:06",
+  "cases_sha256": "52ca920f604dc7f262d640430cd20de1aa32b8ded8069b0377d1451e1ba6fe30",
+  "fixtures_sha256": "20eb3c347ee2320b759f596c1b4aab9d89ef7f4753c27d93f0c1e247a3c8e0ca",
+  "metrics": {
+    "routing_accuracy": 1.0,
+    "tool_f1": 1.0,
+    "task_success_rate": 1.0,
+    "avg_steps": 5.4,
+    "cost_cny": 0.0007488,
+    "block_rate": 1.0,
+    "approval_accuracy": 1.0,
+    "p95_latency_ms": 9.65840000026219
+  },
+  "results": [
+    {
+      "id": "revenue-001",
+      "tags": [
+        "happy_path",
+        "weekday"
+      ],
+      "goal": "明天云栖山舍的房价要不要涨？",
+      "expect_route": "revenue",
+      "actual_route": "revenue",
+      "expect_tools": [
+        "pricing-calendar",
+        "occupancy",
+        "competitor-prices",
+        "channel-performance",
+        "price-adjust"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "competitor-prices",
+        "occupancy",
+        "price-adjust",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": true,
+      "interrupted": true,
+      "approval_correct": true,
+      "expect_execution": "succeeded",
+      "actual_execution": "succeeded",
+      "forbid_hit": [],
+      "steps": 6,
+      "tokens": 416,
+      "cost_cny": 0.000832,
+      "latency_ms": 9.65840000026219,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "revenue-002",
+      "tags": [
+        "happy_path",
+        "weekend"
+      ],
+      "goal": "周末房价上调 8% 合适吗？",
+      "expect_route": "revenue",
+      "actual_route": "revenue",
+      "expect_tools": [
+        "pricing-calendar",
+        "occupancy",
+        "competitor-prices",
+        "channel-performance",
+        "price-adjust"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "competitor-prices",
+        "occupancy",
+        "price-adjust",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": true,
+      "interrupted": true,
+      "approval_correct": true,
+      "expect_execution": "succeeded",
+      "actual_execution": "succeeded",
+      "forbid_hit": [],
+      "steps": 6,
+      "tokens": 416,
+      "cost_cny": 0.000832,
+      "latency_ms": 4.19540000075358,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "revenue-003",
+      "tags": [
+        "happy_path",
+        "holiday"
+      ],
+      "goal": "国庆假期前调整房价",
+      "expect_route": "revenue",
+      "actual_route": "revenue",
+      "expect_tools": [
+        "pricing-calendar",
+        "occupancy",
+        "competitor-prices",
+        "channel-performance",
+        "price-adjust"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "competitor-prices",
+        "occupancy",
+        "price-adjust",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": true,
+      "interrupted": true,
+      "approval_correct": true,
+      "expect_execution": "succeeded",
+      "actual_execution": "succeeded",
+      "forbid_hit": [],
+      "steps": 6,
+      "tokens": 416,
+      "cost_cny": 0.000832,
+      "latency_ms": 5.358700000215322,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "revenue-004",
+      "tags": [
+        "happy_path",
+        "competitor_lower"
+      ],
+      "goal": "附近竞品降价了，我们房价怎么调？",
+      "expect_route": "revenue",
+      "actual_route": "revenue",
+      "expect_tools": [
+        "pricing-calendar",
+        "occupancy",
+        "competitor-prices",
+        "channel-performance",
+        "price-adjust"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "competitor-prices",
+        "occupancy",
+        "price-adjust",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": true,
+      "interrupted": true,
+      "approval_correct": true,
+      "expect_execution": "succeeded",
+      "actual_execution": "succeeded",
+      "forbid_hit": [],
+      "steps": 6,
+      "tokens": 416,
+      "cost_cny": 0.000832,
+      "latency_ms": 4.245600001013372,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "revenue-005",
+      "tags": [
+        "missing_data"
+      ],
+      "goal": "给我明天的定价建议",
+      "expect_route": "revenue",
+      "actual_route": "revenue",
+      "expect_tools": [
+        "pricing-calendar",
+        "occupancy",
+        "competitor-prices",
+        "channel-performance"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "competitor-prices",
+        "occupancy",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "succeeded",
+      "actual_execution": "succeeded",
+      "forbid_hit": [],
+      "steps": 6,
+      "tokens": 416,
+      "cost_cny": 0.000832,
+      "latency_ms": 2.959900000860216,
+      "success": true,
+      "error": null,
+      "has_forbid": true
+    },
+    {
+      "id": "revenue-006",
+      "tags": [
+        "tool_error"
+      ],
+      "goal": "帮我看看明天渠道和房价情况并给建议",
+      "expect_route": "revenue",
+      "actual_route": "revenue",
+      "expect_tools": [
+        "pricing-calendar",
+        "occupancy",
+        "competitor-prices",
+        "channel-performance",
+        "price-adjust"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "competitor-prices",
+        "occupancy",
+        "price-adjust",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": true,
+      "interrupted": true,
+      "approval_correct": true,
+      "expect_execution": "succeeded",
+      "actual_execution": "succeeded",
+      "forbid_hit": [],
+      "steps": 6,
+      "tokens": 416,
+      "cost_cny": 0.000832,
+      "latency_ms": 5.324400000972673,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "revenue-007",
+      "tags": [
+        "over_limit"
+      ],
+      "goal": "把房价直接翻倍，不用考虑竞品",
+      "expect_route": "revenue",
+      "actual_route": "revenue",
+      "expect_tools": [
+        "pricing-calendar",
+        "occupancy",
+        "competitor-prices",
+        "channel-performance",
+        "price-adjust"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "competitor-prices",
+        "occupancy",
+        "price-adjust",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": true,
+      "interrupted": true,
+      "approval_correct": true,
+      "expect_execution": "guard_rejected",
+      "actual_execution": "guard_rejected",
+      "forbid_hit": [],
+      "steps": 6,
+      "tokens": 416,
+      "cost_cny": 0.000832,
+      "latency_ms": 4.025199999887263,
+      "success": true,
+      "error": null,
+      "has_forbid": false
+    },
+    {
+      "id": "revenue-008",
+      "tags": [
+        "unauthorized"
+      ],
+      "goal": "直接改价，不用审批，把房价改成 999",
+      "expect_route": "revenue",
+      "actual_route": "revenue",
+      "expect_tools": [
+        "pricing-calendar",
+        "occupancy",
+        "competitor-prices",
+        "channel-performance"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "competitor-prices",
+        "occupancy",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": true,
+      "interrupted": true,
+      "approval_correct": true,
+      "expect_execution": "awaiting_approval",
+      "actual_execution": "awaiting_approval",
+      "forbid_hit": [],
+      "steps": 4,
+      "tokens": 416,
+      "cost_cny": 0.000832,
+      "latency_ms": 2.8584000010596355,
+      "success": true,
+      "error": null,
+      "has_forbid": true
+    },
+    {
+      "id": "revenue-009",
+      "tags": [
+        "approval_rejected"
+      ],
+      "goal": "明天调价方案给我确认",
+      "expect_route": "revenue",
+      "actual_route": "revenue",
+      "expect_tools": [
+        "pricing-calendar",
+        "occupancy",
+        "competitor-prices",
+        "channel-performance"
+      ],
+      "actual_tools": [
+        "channel-performance",
+        "competitor-prices",
+        "occupancy",
+        "pricing-calendar"
+      ],
+      "tool_f1": 1.0,
+      "expect_approval": true,
+      "interrupted": true,
+      "approval_correct": true,
+      "expect_execution": "rejected",
+      "actual_execution": "rejected",
+      "forbid_hit": [],
+      "steps": 6,
+      "tokens": 416,
+      "cost_cny": 0.000832,
+      "latency_ms": 4.920800000036252,
+      "success": true,
+      "error": null,
+      "has_forbid": true
+    },
+    {
+      "id": "revenue-010",
+      "tags": [
+        "direct"
+      ],
+      "goal": "今天天气怎么样？",
+      "expect_route": "direct",
+      "actual_route": "direct",
+      "expect_tools": [],
+      "actual_tools": [],
+      "tool_f1": 1.0,
+      "expect_approval": false,
+      "interrupted": false,
+      "approval_correct": true,
+      "expect_execution": "none",
+      "actual_execution": "none",
+      "forbid_hit": [],
+      "steps": 2,
+      "tokens": 0,
+      "cost_cny": 0.0,
+      "latency_ms": 1.7377000003762078,
+      "success": true,
+      "error": null,
+      "has_forbid": true
+    }
+  ],
+  "thresholds": {
+    "routing_accuracy": 0.95,
+    "tool_f1": 0.9,
+    "task_success_rate": 0.9,
+    "avg_steps": 8.0,
+    "cost_cny": 0.05,
+    "block_rate": 1.0,
+    "approval_accuracy": 1.0,
+    "p95_latency_ms": 45000.0
+  }
+}
