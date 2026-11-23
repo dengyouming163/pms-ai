@@ -1,0 +1,11 @@
+# 不把本地虚拟环境 / 缓存 / 测试 / 构建日志传入镜像构建上下文
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+tests
+*.log
+Dockerfile*
+.git
+.gitignore
