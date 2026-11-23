@@ -14,6 +14,7 @@ from app.api.insights import router as insights_router
 from app.api.runs import router as runs_router
 from app.config import settings
 from app.persistence.db import init_db
+from app.runtime.trace import configure_langsmith
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # 启动期初始化 DB（失败致命，便于尽早发现配置/连通问题；IF NOT EXISTS 保证重启幂等）
     await init_db()
+    # LangSmith 双写：仅 tracing_v2=true 且 key 非空时启用；关闭时零副作用
+    configure_langsmith()
     # M1 只有 ReplayProvider：配置成 live 也不会切真实模型，显式告警避免误判
     if settings.llm_provider != "replay":
         logger.warning(

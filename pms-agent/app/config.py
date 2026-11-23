@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     # 本地演示在 compose 中固定为 demo-yunqi，阻断任意 merchant_id 的跨商户读写。
     allowed_merchants: str = ""
 
+    # LangSmith 双写（可选）：只有 tracing_v2 为真且 api_key 非空才启用；否则零副作用。
+    # 关闭时不会发起任何外部请求，评测与离线演示不受影响。
+    langchain_tracing_v2: bool = False
+    langchain_api_key: str = ""
+    langchain_project: str = "pms-ai"
+
     @property
     def allowed_merchant_list(self) -> list[str]:
         """把 AGENT_ALLOWED_MERCHANTS 拆成去空白后的列表。"""

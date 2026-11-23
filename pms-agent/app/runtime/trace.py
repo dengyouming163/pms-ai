@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Callable
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -61,6 +62,27 @@ def _is_interrupt(error: Any) -> bool:
     按类名判断而非 isinstance，避免不同 langgraph 版本的模块路径差异。
     """
     return type(error).__name__ in {"GraphInterrupt", "Interrupt"}
+
+
+def configure_langsmith(settings_obj=None) -> bool:
+    """按配置启用 LangSmith 双写；未开启时零副作用。
+
+    LangChain 通过进程环境变量决定是否上报，因此这里只在「开关为真且 key 非空」时
+    写入 LANGCHAIN_* 变量；否则直接返回 False，不设置任何变量、不发外部请求。
+    """
+    from app.config import settings as default_settings
+
+    cfg = settings_obj or default_settings
+    if not cfg.langchain_tracing_v2:
+        return False
+    if not cfg.langchain_api_key:
+        logger.warning("LANGCHAIN_TRACING_V2=true 但缺少 LANGCHAIN_API_KEY，LangSmith 未启用")
+        return False
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_API_KEY"] = cfg.langchain_api_key
+    os.environ["LANGCHAIN_PROJECT"] = cfg.langchain_project
+    logger.info("LangSmith 双写已启用 project=%s", cfg.langchain_project)
+    return True
 
 
 class TraceCallbackHandler(BaseCallbackHandler):
@@ -204,4 +226,4 @@ class TraceCallbackHandler(BaseCallbackHandler):
                    payload={"model": node, "error": _short(error)}, ended_at=now_utc())
 
 
-__all__ = ["TraceCallbackHandler"]
+__all__ = ["TraceCallbackHandler", "configure_langsmith"]
