@@ -179,6 +179,12 @@ services:
       - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
       - REDIS_URL=redis://redis:6379
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      # 回放夹具目录：容器内 config 位于 /app/app，默认会解析到 /eval/fixtures（错误），
+      # 故显式覆盖为 /app/eval/fixtures；具体夹具由下面的 volume 从宿主机仓库根挂载。
+      - FIXTURES_DIR=/app/eval/fixtures
+    volumes:
+      # 把宿主机仓库根 eval 挂进容器（只读），与 FIXTURES_DIR 对齐；夹具由 Task 11 填充。
+      - ./eval:/app/eval:ro
     networks:
       - pms-net
     restart: unless-stopped

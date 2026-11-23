@@ -1,13 +1,116 @@
-"""事件溯源与追踪回调测试：纯函数 + 假 sink，不连库不连网。
+"""事件溯源与追踪回调测试：纯函数 + 假 sink + 假连接，不连库不连网。
 
 - next_seq 是纯函数（不连库），直接断言。
 - TraceCallbackHandler 通过注入假 sink 验证 on_* 回调能写入、且 sink 抛错时
   不中断主流程（不会向上抛异常，并 best-effort 记一条 trace_error）。
+- append_event / list_events 通过 FakeConn（fetchone/fetchall 返回 dict，模拟
+  psycopg 的 dict_row 行工厂）验证：不连真实库时，事件仓储对 dict 行的访问
+  必须用键而非整数下标，否则 append_event 会 KeyError、list_events 会损坏数据
+  （Task 8 回归：dict_row 漏网缺陷）。
 """
 import uuid
+from contextlib import contextmanager
 
-from app.persistence.events import next_seq
+from app.persistence.events import append_event, list_events, next_seq
 from app.runtime.trace import TraceCallbackHandler
+
+
+class _Desc:
+    """模拟 psycopg cursor.description 元素：只暴露 .name。"""
+
+    def __init__(self, name: str):
+        self.name = name
+
+
+class FakeCursor:
+    """模拟 psycopg 游标：fetchone/fetchall 返回 dict（dict_row 行工厂行为）。"""
+
+    def __init__(self, fetchone_result=None, fetchall_result=None):
+        self.fetchone_result = fetchone_result
+        self.fetchall_result = fetchall_result if fetchall_result is not None else []
+        # 与 list_events 的 SELECT 列对齐
+        self.description = [_Desc(n) for n in [
+            "seq", "node", "type", "payload", "started_at", "ended_at",
+            "tokens_in", "tokens_out", "trace_id", "created_at",
+        ]]
+        self.executes: list[tuple] = []  # 记录每次 (sql, params)
+
+    def execute(self, sql: str, params=None):
+        self.executes.append((sql, params))
+
+    def fetchone(self):
+        return self.fetchone_result
+
+    def fetchall(self):
+        return self.fetchall_result
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class FakeConn:
+    """模拟 psycopg 连接：cursor() 与 transaction() 都是上下文管理器。"""
+
+    def __init__(self, cursor: FakeCursor):
+        self._cursor = cursor
+
+    def cursor(self):
+        return self._cursor
+
+    @contextmanager
+    def transaction(self):
+        # psycopg conn.transaction() 是上下文管理器；测试中无需真实事务
+        yield
+
+
+def test_append_event_reads_dict_row_by_key_not_index():
+    """P0-1 回归：db.py 用 dict_row，fetchone 返回 dict。必须 row['max_seq']，
+    否则 row[0] 抛 KeyError: 0，append_event 首次调用即崩。"""
+    cur = FakeCursor(fetchone_result={"max_seq": 5})
+    conn = FakeConn(cur)
+
+    seq = append_event(conn, "run-1", node="run", type="run_started",
+                       payload={"goal": "x"})
+
+    assert seq == 6  # 5 + 1
+    # 执行了两条 SQL：查 max + 插入
+    assert len(cur.executes) == 2
+    select_sql, _ = cur.executes[0]
+    assert "max_seq" in select_sql  # 聚合列起了别名
+    insert_sql, insert_params = cur.executes[1]
+    assert "INSERT" in insert_sql.upper()
+    # 插入参数中 seq 位置应为 6
+    assert insert_params[1] == 6
+
+
+def test_append_event_first_seq_when_no_rows():
+    """空 run：fetchone 返回 {'max_seq': 0}（COALESCE 兜底），首条事件 seq=1。"""
+    cur = FakeCursor(fetchone_result={"max_seq": 0})
+    seq = append_event(FakeConn(cur), "run-new", node="run", type="run_started")
+    assert seq == 1
+    assert cur.executes[1][1][1] == 1
+
+
+def test_list_events_returns_dict_rows_unchanged():
+    """P0-1 回归：dict_row 下 fetchall 已是 dict 列表，不得再 dict(zip(cols, row))
+    否则值会被列名覆盖（{'seq': 'seq', ...}），SSE 数据全损坏。"""
+    raw = [
+        {"seq": 1, "node": "run", "type": "run_started", "payload": {"goal": "x"},
+         "started_at": None, "ended_at": None, "tokens_in": None,
+         "tokens_out": None, "trace_id": None, "created_at": "t0"},
+        {"seq": 2, "node": "supervisor", "type": "node_start", "payload": {},
+         "started_at": "t1", "ended_at": None, "tokens_in": None,
+         "tokens_out": None, "trace_id": "tr", "created_at": "t2"},
+    ]
+    cur = FakeCursor(fetchall_result=raw)
+    out = list_events(FakeConn(cur), "run-1", after_seq=0)
+
+    assert out == raw  # 原样返回，值未被列名覆盖
+    assert out[0]["seq"] == 1  # 是整数 1，不是字符串 "seq"
+    assert out[1]["type"] == "node_start"
 
 
 def test_seq_is_monotonic():

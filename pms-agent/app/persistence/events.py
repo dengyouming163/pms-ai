@@ -47,13 +47,15 @@ def append_event(
         try:
             with conn.transaction():
                 with conn.cursor() as cur:
+                    # 聚合列起别名：db.py 用 row_factory=dict_row，fetchone 返回 dict，
+                    # 必须用键访问（row[0] 会抛 KeyError: 0）。
                     cur.execute(
-                        "SELECT COALESCE(MAX(seq), 0) FROM agent_events"
+                        "SELECT COALESCE(MAX(seq), 0) AS max_seq FROM agent_events"
                         " WHERE run_id = %s",
                         (run_id,),
                     )
                     row = cur.fetchone()
-                    current_max = row[0] if row else 0
+                    current_max = row["max_seq"] if row else 0
                     seq = next_seq(current_max)
                     cur.execute(
                         "INSERT INTO agent_events"
@@ -81,7 +83,12 @@ def append_event(
 
 
 def list_events(conn, run_id: str, after_seq: int = 0) -> list[dict[str, Any]]:
-    """按 seq 升序返回 run_id 下 after_seq 之后的事件（不含 after_seq 本身）。"""
+    """按 seq 升序返回 run_id 下 after_seq 之后的事件（不含 after_seq 本身）。
+
+    db.py 用 row_factory=dict_row，fetchall() 已返回 dict 列表；直接返回即可，
+    不要再 dict(zip(cols, row))——row 已是 dict，迭代会得到列名，导致值被列名覆盖、
+    SSE 数据全损坏。
+    """
     with conn.cursor() as cur:
         cur.execute(
             "SELECT seq, node, type, payload, started_at, ended_at,"
@@ -91,8 +98,7 @@ def list_events(conn, run_id: str, after_seq: int = 0) -> list[dict[str, Any]]:
             " ORDER BY seq ASC",
             (run_id, after_seq),
         )
-        cols = [desc.name for desc in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return cur.fetchall()
 
 
 __all__ = ["next_seq", "append_event", "list_events", "TERMINAL_STATUSES"]

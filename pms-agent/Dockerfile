@@ -13,9 +13,10 @@ WORKDIR /app
 COPY requirements.lock pyproject.toml ./
 RUN pip install -r requirements.lock
 
-# 应用代码与回放夹具（config 默认 fixtures_dir 解析为 /app/eval/fixtures）
+# 应用代码。回放夹具不拷入镜像：build context 是 ./pms-agent，拿不到仓库根 eval；
+# 夹具由 compose volume ./eval:/app/eval:ro 挂载（见 docker-compose.yml pms-agent），
+# 并通过环境变量 FIXTURES_DIR=/app/eval/fixtures 指向。
 COPY app/ ./app/
-COPY eval/ ./eval/
 
 EXPOSE 8000
 

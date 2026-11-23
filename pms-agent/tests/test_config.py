@@ -3,7 +3,9 @@
 容器内 compose 传 PMS_SERVER_URL / CORS_ORIGINS，这些行为直接决定 agent 能否启动与连到 pms-server。
 每次构造独立 Settings() 实例读取当前 os.environ，避免污染进程级单例。
 """
-from app.config import Settings
+from pathlib import Path
+
+from app.config import REPO_ROOT, Settings
 
 
 def test_pms_server_url_alias(monkeypatch):
@@ -57,3 +59,20 @@ def test_agent_tools_base_derived(monkeypatch):
     monkeypatch.setenv("PMS_SERVER_INTERNAL_URL", "http://svc:9090/")
     s = Settings()
     assert s.agent_tools_base == "http://svc:9090/api/internal/agent-tools"
+
+
+def test_fixtures_dir_default_under_repo_root(monkeypatch):
+    """默认夹具目录必须是仓库根 eval/fixtures（计划约定），不是 pms-agent/eval。"""
+    monkeypatch.delenv("FIXTURES_DIR", raising=False)
+    s = Settings()
+    assert s.fixtures_dir == REPO_ROOT / "eval" / "fixtures"
+    assert isinstance(s.fixtures_dir, Path)
+
+
+def test_fixtures_dir_env_override_used_in_container(monkeypatch):
+    """P0-2 回归：容器内 config 位于 /app/app，默认会解析到 /eval/fixtures（错误）；
+    compose 传 FIXTURES_DIR=/app/eval/fixtures 必须覆盖该默认值，回放才能找到夹具。"""
+    monkeypatch.setenv("FIXTURES_DIR", "/app/eval/fixtures")
+    s = Settings()
+    assert s.fixtures_dir == Path("/app/eval/fixtures")
+    assert isinstance(s.fixtures_dir, Path)
